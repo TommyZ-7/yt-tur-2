@@ -18,7 +18,11 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' data: blob: http://localhost:* https://www.youtube.com https://i.ytimg.com https://*.googlevideo.com https://*.youtube.com https://*.googlevideo.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'"
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' stream: data: blob:; media-src 'self' stream: data: blob:; connect-src 'self' stream: https:",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {
