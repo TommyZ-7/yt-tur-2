@@ -18,7 +18,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' stream: data: blob:; media-src 'self' stream: data: blob:; connect-src 'self' stream: https:",
+      "csp": "default-src 'self' tauri:; media-src 'self' http://localhost:*; connect-src 'self' http://localhost:*",
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]

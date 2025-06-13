@@ -1,15 +1,8 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  Play,
-  Pause,
-  Download,
-  Search,
-  Volume2,
-  Maximize,
-  Settings,
-} from "lucide-react";
+import { Play, Download, Search } from "lucide-react";
+import VideoPlayer from "./components/player";
 
 interface VideoInfo {
   title: string;
@@ -25,18 +18,15 @@ interface VideoFormat {
   url: string;
 }
 
-const YouTubeStreamer = () => {
+const App = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [streamUrl, setStreamUrl] = useState("");
+  const [streamAudioUrl, setStreamAudioUrl] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<string>("");
+  const [selectedAudioFormat, setSelectedAudioFormat] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [showControls, setShowControls] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsTimeoutRef = useRef<number>();
@@ -93,10 +83,17 @@ const YouTubeStreamer = () => {
     setError("");
 
     try {
-      const url = await invoke<string>("get_stream_url", {
-        videoUrl: videoInfo.url,
+      const url = await invoke<string>("get_proxy_url", {
+        videoUrl: videoUrl,
         formatId: selectedFormat || null,
       });
+      console.log(`Streaming URL: ${url}`);
+
+      const audioUrl = await invoke<string>("get_proxy_url", {
+        videoUrl: videoUrl,
+        formatId: selectedAudioFormat || null,
+      });
+      setStreamAudioUrl(audioUrl);
       setStreamUrl(url);
     } catch (err) {
       setError(`ストリーミングエラー: ${err}`);
@@ -124,66 +121,6 @@ const YouTubeStreamer = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const togglePlayPause = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (video.paused) {
-      video.play();
-      setIsPlaying(true);
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    const video = videoRef.current;
-    if (video) {
-      setCurrentTime(video.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    const video = videoRef.current;
-    if (video) {
-      setDuration(video.duration);
-    }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const video = videoRef.current;
-    if (video) {
-      const newTime = parseFloat(e.target.value);
-      video.currentTime = newTime;
-      setCurrentTime(newTime);
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (videoRef.current) {
-      videoRef.current.volume = newVolume;
-    }
-  };
-
-  const formatTime = (time: number): string => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
-  const handleMouseMove = () => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 3000);
   };
 
   useEffect(() => {
@@ -242,12 +179,36 @@ const YouTubeStreamer = () => {
               </label>
               <select
                 value={selectedFormat}
-                onChange={(e) => setSelectedFormat(e.target.value)}
+                onChange={(e) => {
+                  setSelectedFormat(e.target.value);
+
+                  console.log(`Selected format: ${e.target.value}`);
+                }}
                 className="px-3 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {videoInfo.formats.map((format) => (
                   <option key={format.format_id} value={format.format_id}>
-                    {format.quality} ({format.ext})
+                    {format.format_id} {format.quality} ({format.ext})
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* 音声フォーマット選択 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                音声フォーマットを選択:
+              </label>
+              <select
+                value={selectedAudioFormat}
+                onChange={(e) => {
+                  setSelectedAudioFormat(e.target.value);
+                  console.log(`Selected audio format: ${e.target.value}`);
+                }}
+                className="px-3 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {videoInfo.formats.map((format) => (
+                  <option key={format.format_id} value={format.format_id}>
+                    {format.format_id} {format.quality} ({format.ext})
                   </option>
                 ))}
               </select>
@@ -277,88 +238,9 @@ const YouTubeStreamer = () => {
 
         {/* 動画プレイヤー */}
         {streamUrl && (
-          <div className="bg-black rounded-lg overflow-hidden relative">
-            <div
-              className="relative"
-              onMouseMove={handleMouseMove}
-              onMouseLeave={() => setShowControls(false)}
-            >
-              <video
-                ref={videoRef}
-                src={streamUrl}
-                className="w-full h-auto max-h-96 object-contain"
-                onTimeUpdate={handleTimeUpdate}
-                onLoadedMetadata={handleLoadedMetadata}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                crossOrigin="anonymous"
-              />
-
-              {/* カスタムコントロール */}
-              <div
-                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
-                  showControls ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                {/* プログレスバー */}
-                <div className="mb-3">
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={handleSeek}
-                    className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-                    style={{
-                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
-                        (currentTime / duration) * 100
-                      }%, #4b5563 ${
-                        (currentTime / duration) * 100
-                      }%, #4b5563 100%)`,
-                    }}
-                  />
-                  <div className="flex justify-between text-xs text-gray-300 mt-1">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
-                  </div>
-                </div>
-
-                {/* コントロールボタン */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={togglePlayPause}
-                      className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                    >
-                      {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <Volume2 size={18} />
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={volume}
-                        onChange={handleVolumeChange}
-                        className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                      <Settings size={18} />
-                    </button>
-                    <button className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                      <Maximize size={18} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <>
+            <VideoPlayer videoSrc={streamUrl} audioSrc={streamAudioUrl} />
+          </>
         )}
 
         {isLoading && (
@@ -371,4 +253,4 @@ const YouTubeStreamer = () => {
   );
 };
 
-export default YouTubeStreamer;
+export default App;
