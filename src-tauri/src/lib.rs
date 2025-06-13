@@ -1,16 +1,15 @@
 use axum::{
     body::Body,
     extract::{Query, State},
-    response::{IntoResponse, Response},
+    response::{ Response},
     routing::get,
     Router,
 };
-use futures::stream::StreamExt;
 use http::{HeaderMap, StatusCode};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use tauri::{App, AppHandle, Manager};
+use tauri::{App, AppHandle};
 use tauri_plugin_shell::ShellExt;
 
 // --- Static Proxy Server Port ---

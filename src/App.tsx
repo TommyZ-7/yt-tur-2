@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Play, Download, Search } from "lucide-react";
 import VideoPlayer from "./components/player";
@@ -28,7 +28,6 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const videoRef = useRef<HTMLVideoElement>(null);
   const controlsTimeoutRef = useRef<number>();
 
   const extractVideoId = (url: string): string | null => {
