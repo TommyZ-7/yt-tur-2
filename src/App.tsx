@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Play, Download, Search } from "lucide-react";
 import VideoPlayer from "./components/player";
+import { Link } from "react-router";
 
 interface VideoInfo {
   title: string;
@@ -27,6 +28,8 @@ const App = () => {
   const [selectedAudioFormat, setSelectedAudioFormat] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [channnelUrl, setChannelUrl] = useState("");
+  const [channnelInfo, setChannelInfo] = useState("");
 
   const controlsTimeoutRef = useRef<number>();
 
@@ -248,6 +251,43 @@ const App = () => {
           </div>
         )}
       </div>
+      <input
+        type="text"
+        value={channnelUrl}
+        onChange={(e) => setChannelUrl(e.target.value)}
+        placeholder="チャンネルのURLを入力してください"
+        className="mt-4 px-4 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onKeyPress={(e) => {
+          if (e.key === "Enter") {
+            // チャンネルURLの処理をここに追加
+            console.log(`チャンネルURL: ${channnelUrl}`);
+          }
+        }}
+      />
+      <button
+        onClick={() => {
+          // チャンネルURLの処理をここに追加
+          const result = invoke<string>("dlp_get_video_info", {
+            videoUrl: channnelUrl,
+          });
+          result
+            .then((data) => {
+              console.log(`動画情報: ${data}`);
+            })
+            .catch((err) => {
+              setError(`動画取得エラー: ${err}`);
+            });
+        }}
+        className="mt-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center gap-2"
+      >
+        <Search size={18} />
+      </button>
+      <Link
+        to="/home"
+        className="mt-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center gap-2"
+      >
+        ホーム
+      </Link>
     </div>
   );
 };

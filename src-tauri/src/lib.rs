@@ -12,6 +12,12 @@ use std::net::SocketAddr;
 use tauri::{App, AppHandle};
 use tauri_plugin_shell::ShellExt;
 
+mod dlp; // Import the module for channel information
+
+use dlp::get_channel::dlp_get_channel_info;
+use dlp::get_channel::dlp_get_channel_newvideo;
+use dlp::get_channel::dlp_get_video_info;
+
 // --- Static Proxy Server Port ---
 // アプリケーション起動時に利用可能なポートを自動で選択します。
 static PROXY_PORT: Lazy<u16> =
@@ -300,7 +306,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_video_info,
             get_proxy_url, // Changed from get_stream_url
-            download_video
+            download_video,
+            dlp_get_channel_info,
+            dlp_get_channel_newvideo,
+            dlp_get_video_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

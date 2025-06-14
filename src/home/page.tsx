@@ -1,5 +1,5 @@
-import React, { useState, useMemo, FC } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useMemo, FC, useEffect, useRef } from "react";
+import { motion, AnimatePresence, Transition, anticipate } from "framer-motion";
 import {
   Home,
   Youtube,
@@ -11,231 +11,73 @@ import {
   ThumbsUp,
   Calendar,
   Eye,
+  Loader,
 } from "lucide-react";
-import "../App.css";
+import "../App.css"; // グローバルスタイルをインポート
+import { invoke } from "@tauri-apps/api/core";
+import VideoPlayer from "../components/player";
 
 // --- 型定義 (TypeScript) ---
 interface Channel {
-  id: number;
+  id: string; // YouTubeのチャンネルID (@-prefixed or legacy)
+  atId: string; // @-prefixedのチャンネルID
   name: string;
   icon: string;
   banner: string;
   description: string;
   subscribers: string;
+  videos?: Video[];
 }
 
 interface Video {
-  id: number;
-  channelId: number;
+  id?: string; // YouTubeの動画ID
+  url: string;
+  title?: string;
+  thumbnail?: string;
+  views?: string;
+  date?: string;
+}
+
+interface VideoInfo {
   title: string;
-  thumbnail: string;
-  views: string;
-  date: string;
+  duration: string;
+  url: string;
+  formats: VideoFormat[];
+}
+
+interface VideoFormat {
+  format_id: string;
+  ext: string;
+  quality: string;
+  url: string;
 }
 
 interface PageState {
   name: "home" | "channel" | "video";
-  id: number | null;
+  id: string | null; // チャンネルIDまたは動画ID
 }
 
 type NavigateFunction = (page: PageState) => void;
 
-// --- ダミーデータ ---
-const channelsData: Channel[] = [
-  {
-    id: 1,
-    name: "クリエイティブ・コーダー",
-    icon: "https://placehold.co/100x100/7E57C2/FFFFFF?text=CC",
-    banner: "https://placehold.co/1600x400/311B92/FFFFFF?text=Creative+Coder",
-    description:
-      "コーディングとデザインの融合。美しく機能的なウェブサイトやアプリケーションを作成するためのテクニックやインスピレーションを提供します。React、Three.js、Framer Motionなどの最新技術を探求。",
-    subscribers: "125万",
-  },
-  {
-    id: 2,
-    name: "Nature Explorers",
-    icon: "https://placehold.co/100x100/66BB6A/FFFFFF?text=NE",
-    banner: "https://placehold.co/1600x400/2E7D32/FFFFFF?text=Nature+Explorers",
-    description:
-      "世界の息をのむような風景、驚くべき野生動物、そして感動的な自然の物語をお届けします。4Kドローン映像やマクロ撮影で、今まで見たことのない地球の姿を発見しましょう。",
-    subscribers: "280万",
-  },
-  {
-    id: 3,
-    name: "未来ガジェット研究所",
-    icon: "https://placehold.co/100x100/42A5F5/FFFFFF?text=FG",
-    banner: "https://placehold.co/1600x400/1565C0/FFFFFF?text=Future+Gadgets",
-    description:
-      "最新のテクノロジーと革新的なガジェットをレビュー＆解説。スマートフォン、AI、VRから、まだ誰も知らないような未来の技術まで、あなたの好奇心を刺激します。",
-    subscribers: "89万",
-  },
-  {
-    id: 4,
-    name: "美食家のキッチン",
-    icon: "https://placehold.co/100x100/FFA726/FFFFFF?text=BK",
-    banner:
-      "https://placehold.co/1600x400/F57C00/FFFFFF?text=Gourmet's+Kitchen",
-    description:
-      "家庭で再現できる本格レシピから、世界の珍しい料理まで。料理の楽しさと奥深さを伝えるチャンネル。美しい映像と共に、あなたの食卓を豊かにするヒントをお届けします。",
-    subscribers: "150万",
-  },
-];
-
-const videosData: Video[] = [
-  // Creative Coder
-  {
-    id: 101,
-    channelId: 1,
-    title:
-      "Framer Motion入門：1時間でインタラクティブなアニメーションをマスター",
-    thumbnail: "https://placehold.co/400x225/5E35B1/FFFFFF?text=Vid1",
-    views: "15万",
-    date: "2週間前",
-  },
-  {
-    id: 102,
-    channelId: 1,
-    title: "React + Three.js で3Dポートフォリオサイトを作る",
-    thumbnail: "https://placehold.co/400x225/5E35B1/FFFFFF?text=Vid2",
-    views: "28万",
-    date: "1ヶ月前",
-  },
-  {
-    id: 103,
-    channelId: 1,
-    title: "CSS GridとFlexboxの使い分け【完全ガイド】",
-    thumbnail: "https://placehold.co/400x225/5E35B1/FFFFFF?text=Vid3",
-    views: "45万",
-    date: "2ヶ月前",
-  },
-  {
-    id: 104,
-    channelId: 1,
-    title: "UIデザインの原則：美しさと使いやすさを両立する",
-    thumbnail: "https://placehold.co/400x225/5E35B1/FFFFFF?text=Vid4",
-    views: "12万",
-    date: "3ヶ月前",
-  },
-
-  // Nature Explorers
-  {
-    id: 201,
-    channelId: 2,
-    title: "【4K】アイスランドの絶景ドローン空撮",
-    thumbnail: "https://placehold.co/400x225/4CAF50/FFFFFF?text=Vid1",
-    views: "320万",
-    date: "3週間前",
-  },
-  {
-    id: 202,
-    channelId: 2,
-    title: "アマゾンの奥地に棲む珍しい生き物たち",
-    thumbnail: "https://placehold.co/400x225/4CAF50/FFFFFF?text=Vid2",
-    views: "510万",
-    date: "1ヶ月前",
-  },
-  {
-    id: 203,
-    channelId: 2,
-    title: "ホタルが舞う森の奇跡的な夜",
-    thumbnail: "https://placehold.co/400x225/4CAF50/FFFFFF?text=Vid3",
-    views: "180万",
-    date: "2ヶ月前",
-  },
-
-  // 未来ガジェット研究所
-  {
-    id: 301,
-    channelId: 3,
-    title: "透明なスマートフォンの実機レビュー！未来はここにある",
-    thumbnail: "https://placehold.co/400x225/29B6F6/FFFFFF?text=Vid1",
-    views: "98万",
-    date: "1週間前",
-  },
-  {
-    id: 302,
-    channelId: 3,
-    title: "家庭用AIアシスタント頂上決戦！どれが一番賢い？",
-    thumbnail: "https://placehold.co/400x225/29B6F6/FFFFFF?text=Vid2",
-    views: "120万",
-    date: "1ヶ月前",
-  },
-  {
-    id: 303,
-    channelId: 3,
-    title: "絶対欲しくなる！クラウドファンディングの面白ガジェットTOP5",
-    thumbnail: "https://placehold.co/400x225/29B6F6/FFFFFF?text=Vid3",
-    views: "75万",
-    date: "2ヶ月前",
-  },
-
-  // 美食家のキッチン
-  {
-    id: 401,
-    channelId: 4,
-    title: "究極のカルボナーラ：生クリーム不要の本格レシピ",
-    thumbnail: "https://placehold.co/400x225/FFB74D/FFFFFF?text=Vid1",
-    views: "250万",
-    date: "4日前",
-  },
-  {
-    id: 402,
-    channelId: 4,
-    title: "スパイスから作る本格バターチキンカレー",
-    thumbnail: "https://placehold.co/400x225/FFB74D/FFFFFF?text=Vid2",
-    views: "180万",
-    date: "2週間前",
-  },
-  {
-    id: 403,
-    channelId: 4,
-    title: "絶品！台湾風ルーロー飯の作り方",
-    thumbnail: "https://placehold.co/400x225/FFB74D/FFFFFF?text=Vid3",
-    views: "110万",
-    date: "1ヶ月前",
-  },
-  {
-    id: 404,
-    channelId: 4,
-    title: "週末に作りたい、本格サワードウブレッド",
-    thumbnail: "https://placehold.co/400x225/FFB74D/FFFFFF?text=Vid4",
-    views: "95万",
-    date: "1ヶ月前",
-  },
-];
+// --- 非同期データ取得のモック ---
 
 // --- アニメーション設定 ---
 const pageVariants = {
-  initial: { opacity: 0, y: 30 },
-  in: { opacity: 1, y: 0 },
-  out: { opacity: 0, y: -30 },
+  initial: { opacity: 0 },
+  in: { opacity: 1 },
+  out: { opacity: 0 },
 };
-
-const pageTransition = {
-  type: "tween" as const,
-  ease: "anticipate" as const,
-  duration: 0.5,
-};
-
+const pageTransition = { ease: anticipate, duration: 0.5 };
 const listVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
-
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
   visible: {
     y: 0,
     opacity: 1,
-    transition: {
-      type: "spring" as const,
-      stiffness: 100,
-    },
+    transition: { type: "spring" as const, stiffness: 100 },
   },
 };
 
@@ -246,18 +88,12 @@ interface SidebarProps {
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   navigate: NavigateFunction;
 }
-
 const Sidebar: FC<SidebarProps> = ({ isOpen, setIsOpen, navigate }) => {
-  const sidebarVariants = {
-    open: { x: 0 },
-    closed: { x: "-100%" },
-  };
-
+  const sidebarVariants = { open: { x: 0 }, closed: { x: "-100%" } };
   const navItemVariants = {
     initial: { opacity: 0, x: -20 },
     animate: { opacity: 1, x: 0 },
   };
-
   const navItems = [
     {
       icon: Home,
@@ -275,7 +111,6 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, setIsOpen, navigate }) => {
       page: { name: "home", id: null } as PageState,
     },
   ];
-
   return (
     <>
       <AnimatePresence>
@@ -296,11 +131,9 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, setIsOpen, navigate }) => {
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="fixed top-0 left-0 h-full bg-neutral-900/80 backdrop-blur-md w-64 z-50 p-6 shadow-2xl"
       >
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-2">
-            <PlayCircle className="text-red-500" size={30} />
-            <h1 className="text-xl font-bold text-white">VideoHub</h1>
-          </div>
+        <div className="flex items-center gap-2 mb-10">
+          <PlayCircle className="text-red-500" size={30} />
+          <h1 className="text-xl font-bold text-white">VideoHub</h1>
         </div>
         <motion.ul
           className="space-y-2"
@@ -334,12 +167,11 @@ interface VideoCardProps {
   video: Video;
   navigate: NavigateFunction;
 }
-
 const VideoCard: FC<VideoCardProps> = ({ video, navigate }) => (
   <motion.div
     variants={itemVariants}
     className="cursor-pointer group"
-    onClick={() => navigate({ name: "video", id: video.id })}
+    onClick={() => navigate({ name: "video", id: video.id ?? null })}
   >
     <motion.div
       layoutId={`video-player-${video.id}`}
@@ -380,15 +212,9 @@ const VideoCard: FC<VideoCardProps> = ({ video, navigate }) => (
 
 interface ChannelCardProps {
   channel: Channel;
-  videos: Video[];
   navigate: NavigateFunction;
 }
-
-const ChannelCard: FC<ChannelCardProps> = ({ channel, videos, navigate }) => {
-  const channelVideos = videos
-    .filter((v) => v.channelId === channel.id)
-    .slice(0, 3);
-
+const ChannelCard: FC<ChannelCardProps> = ({ channel, navigate }) => {
   return (
     <motion.div
       variants={itemVariants}
@@ -426,11 +252,11 @@ const ChannelCard: FC<ChannelCardProps> = ({ channel, videos, navigate }) => {
       <div className="px-6 pb-6">
         <h3 className="font-semibold text-white mb-3">最新の動画</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {channelVideos.map((video) => (
+          {channel.videos?.slice(0, 3).map((video) => (
             <div
-              key={video.id}
+              key={video.url}
               className="group cursor-pointer"
-              onClick={() => navigate({ name: "video", id: video.id })}
+              onClick={() => navigate({ name: "video", id: video.id ?? null })}
             >
               <motion.div
                 className="relative rounded-lg overflow-hidden"
@@ -458,51 +284,40 @@ const ChannelCard: FC<ChannelCardProps> = ({ channel, videos, navigate }) => {
 
 interface PageProps {
   navigate: NavigateFunction;
+  channels: Channel[];
 }
-
-const HomePage: FC<PageProps> = ({ navigate }) => {
-  return (
+const HomePage: FC<PageProps> = ({ navigate, channels }) => (
+  <motion.div
+    key="home"
+    variants={pageVariants}
+    initial="initial"
+    animate="in"
+    exit="out"
+    transition={pageTransition as Transition}
+  >
+    <h1 className="text-4xl font-bold text-white mb-8">人気のチャンネル</h1>
     <motion.div
-      key="home"
-      variants={pageVariants}
-      initial="initial"
-      animate="in"
-      exit="out"
-      transition={pageTransition}
+      className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+      variants={listVariants}
+      initial="hidden"
+      animate="visible"
     >
-      <h1 className="text-4xl font-bold text-white mb-8">人気のチャンネル</h1>
-      <motion.div
-        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-        variants={listVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {channelsData.map((channel) => (
-          <ChannelCard
-            key={channel.id}
-            channel={channel}
-            videos={videosData}
-            navigate={navigate}
-          />
-        ))}
-      </motion.div>
+      {channels.map((channel) => (
+        <ChannelCard key={channel.id} channel={channel} navigate={navigate} />
+      ))}
     </motion.div>
-  );
-};
+  </motion.div>
+);
 
 interface DetailPageProps extends PageProps {
-  id: number;
+  id: string;
 }
-
-const ChannelPage: FC<DetailPageProps> = ({ id, navigate }) => {
-  const channel = useMemo(() => channelsData.find((c) => c.id === id), [id]);
-  const channelVideos = useMemo(
-    () => videosData.filter((v) => v.channelId === id),
-    [id]
+const ChannelPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
+  const channel = useMemo(
+    () => channels.find((c) => c.id === id),
+    [id, channels]
   );
-
   if (!channel) return <div>Channel not found</div>;
-
   return (
     <motion.div
       key={`channel-${id}`}
@@ -523,7 +338,6 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate }) => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/50 to-transparent"></div>
       </div>
-
       <div className="flex flex-col md:flex-row items-center md:items-end -mt-20 md:-mt-24 px-4 md:px-8 z-10 relative">
         <motion.img
           src={channel.icon}
@@ -551,7 +365,7 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate }) => {
               <span>{channel.subscribers}</span>
             </div>
             <span>•</span>
-            <div>{channelVideos.length}本の動画</div>
+            <div>{channel.videos?.length || 0}本の動画</div>
           </motion.div>
         </div>
         <motion.button
@@ -565,7 +379,6 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate }) => {
           登録する
         </motion.button>
       </div>
-
       <motion.p
         className="mt-8 text-neutral-300 max-w-3xl"
         initial={{ opacity: 0, y: 20 }}
@@ -574,7 +387,6 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate }) => {
       >
         {channel.description}
       </motion.p>
-
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-white mb-6">動画一覧</h2>
         <motion.div
@@ -583,7 +395,7 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate }) => {
           initial="hidden"
           animate="visible"
         >
-          {channelVideos.map((video) => (
+          {channel.videos?.map((video) => (
             <VideoCard key={video.id} video={video} navigate={navigate} />
           ))}
         </motion.div>
@@ -592,19 +404,55 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate }) => {
   );
 };
 
-const VideoPage: FC<DetailPageProps> = ({ id, navigate }) => {
-  const video = useMemo(() => videosData.find((v) => v.id === id), [id]);
-  const channel = useMemo(
-    () => channelsData.find((c) => c.id === video?.channelId),
-    [video]
-  );
-  const relatedVideos = useMemo(
-    () =>
-      videosData.filter((v) => v.channelId === video?.channelId && v.id !== id),
-    [video]
-  );
+const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [streamUrl, setStreamUrl] = useState<string>("");
+  const [streamAudioUrl, setStreamAudioUrl] = useState<string>("");
+  const [playVideoInfo, setPlayVideoInfo] = useState<VideoInfo | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<string>("");
+  const [selectedAudioFormat, setSelectedAudioFormat] = useState<string>("");
+  const videoInfo = useMemo(() => {
+    for (const channel of channels) {
+      const video = channel.videos?.find((v) => v.id === id);
+      if (video) return { video, channel };
+    }
+    return null;
+  }, [id, channels]);
 
-  if (!video || !channel) return <div>Video not found</div>;
+  if (!videoInfo) return <div>Video not found</div>;
+  const { video, channel } = videoInfo;
+  const relatedVideos = channel.videos?.filter((v) => v.id !== id) || [];
+
+  const handleGetVideoInfo = async () => {
+    if (!video.url) return;
+    const playInfo = await invoke<VideoInfo>("get_video_info", {
+      videoUrl: video.url,
+    });
+    console.log("Fetched video info:", playInfo);
+    setPlayVideoInfo(playInfo);
+  };
+
+  const handleStreamVideo = async () => {
+    if (!videoInfo) return;
+
+    try {
+      const url = await invoke<string>("get_proxy_url", {
+        videoUrl: video.url,
+        formatId: selectedFormat || null,
+      });
+      console.log(`Streaming URL: ${url}`);
+
+      const audioUrl = await invoke<string>("get_proxy_url", {
+        videoUrl: video.url,
+        formatId: selectedAudioFormat || null,
+      });
+      setStreamAudioUrl(audioUrl);
+      setStreamUrl(url);
+    } catch (err) {
+      console.error("Error streaming video:", err);
+    }
+    setIsPlaying(true);
+  };
 
   return (
     <motion.div
@@ -621,14 +469,16 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate }) => {
           layoutId={`video-player-${video.id}`}
           className="aspect-video bg-black rounded-2xl shadow-2xl flex items-center justify-center overflow-hidden"
         >
-          <div
-            className="w-full h-full bg-cover bg-center flex items-center justify-center"
-            style={{ backgroundImage: `url(${video.thumbnail})` }}
-          >
-            <div className="w-full h-full bg-black/30 backdrop-blur-md flex items-center justify-center rounded-2xl">
+          {isPlaying ? (
+            <VideoPlayer videoSrc={streamUrl} audioSrc={streamAudioUrl} />
+          ) : (
+            <div
+              className="w-full h-full bg-black flex items-center justify-center cursor-pointer"
+              onClick={() => handleStreamVideo()}
+            >
               <PlayCircle className="text-white/80" size={100} />
             </div>
-          </div>
+          )}
         </motion.div>
         <motion.h1
           className="text-3xl font-bold text-white mt-6"
@@ -663,8 +513,55 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate }) => {
               <ThumbsUp size={20} /> 1.2万
             </motion.button>
           </div>
-        </motion.div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">
+              品質を選択:
+            </label>
+            <select
+              value={selectedFormat}
+              onChange={(e) => {
+                setSelectedFormat(e.target.value);
 
+                console.log(`Selected format: ${e.target.value}`);
+              }}
+              className="px-3 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {playVideoInfo?.formats.map((format) => (
+                <option key={format.format_id} value={format.format_id}>
+                  {format.format_id} {format.quality} ({format.ext})
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* 音声フォーマット選択 */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">
+              音声フォーマットを選択:
+            </label>
+            <select
+              value={selectedAudioFormat}
+              onChange={(e) => {
+                setSelectedAudioFormat(e.target.value);
+                console.log(`Selected audio format: ${e.target.value}`);
+              }}
+              className="px-3 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {playVideoInfo?.formats.map((format) => (
+                <option key={format.format_id} value={format.format_id}>
+                  {format.format_id} {format.quality} ({format.ext})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <button
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+              onClick={() => handleGetVideoInfo()}
+            >
+              F
+            </button>
+          </div>
+        </motion.div>
         <motion.div
           className="flex items-center gap-4 mt-6 py-4 border-y border-neutral-700"
           initial={{ opacity: 0, y: 20 }}
@@ -708,7 +605,7 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate }) => {
             <div
               key={rv.id}
               className="flex gap-4 group cursor-pointer"
-              onClick={() => navigate({ name: "video", id: rv.id })}
+              onClick={() => navigate({ name: "video", id: rv.id ?? null })}
             >
               <motion.div
                 className="w-40 rounded-lg overflow-hidden flex-shrink-0"
@@ -740,6 +637,174 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate }) => {
 export default function App() {
   const [page, setPage] = useState<PageState>({ name: "home", id: null });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [channelList, setChannelList] = useState<Channel[]>([]);
+  const channelListRef = useRef<Channel[]>([]); // チャンネルリストの参照を保持
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const hasRun = useRef(false);
+
+  const debugChannelList = [
+    "@zzxk4sen",
+    "@hitoyado",
+    "@Mine_Explorer",
+    "@hinanotachiba7",
+  ]; // デバッグ用のチャンネルリスト
+  //
+  useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
+    // チャンネル情報を取得する関数
+    const fetchChannelInfo = async (channelID: string): Promise<Channel> => {
+      const result = await invoke<string>("dlp_get_channel_info", {
+        channelUrl: "https://www.youtube.com/" + channelID,
+      });
+      const parsedResult = JSON.parse(result);
+      console.log("Fetched channel info:", parsedResult);
+      const channel: Channel = {
+        id: parsedResult.channel_id,
+        atId: channelID,
+        name: parsedResult.channel_name,
+        icon: parsedResult.thumbnail_last,
+        banner: parsedResult.thumbnail,
+        description: parsedResult.channel_description,
+        subscribers: parsedResult.channel_followers,
+        videos: [],
+      };
+      setChannelList((prev) => [...prev, channel]); // UIに進捗を反映
+      // ★ 取得したチャンネルオブジェクトを返す
+      return channel;
+    };
+
+    // すべてのチャンネル情報を順番に取得するラッパー関数
+    const fetchAllChannels = async (): Promise<Channel[]> => {
+      const channels: Channel[] = [];
+      for (const channelId of debugChannelList) {
+        try {
+          const channelInfo = await fetchChannelInfo(channelId);
+          channels.push(channelInfo);
+        } catch (error) {
+          console.error(
+            `Failed to fetch channel info for ${channelId}:`,
+            error
+          );
+        }
+      }
+      // ★ 取得した全チャンネルの配列を返す
+      return channels;
+    };
+
+    // チャンネルのトップビデオ（最新動画1本）のURLを取得する関数
+    const fetchChannelTopVideoUrl = async (
+      channelID: string
+    ): Promise<string> => {
+      const result = await invoke<string>("dlp_get_channel_newvideo", {
+        channelUrl: "https://www.youtube.com/" + channelID,
+      });
+      console.log("Fetched top video url for channel:", result);
+      // ★ 取得した動画URLを返す
+      return result;
+    };
+
+    // すべてのチャンネルのトップビデオ情報を取得し、チャンネルリストを更新するラッパー関数
+    const fetchAllTopVideos = async (
+      currentChannels: Channel[]
+    ): Promise<Channel[]> => {
+      // mapとPromise.allを使って並列処理
+      const updatedChannelsPromises = currentChannels.map(async (channel) => {
+        try {
+          const videoUrl = await fetchChannelTopVideoUrl(channel.atId);
+          return {
+            ...channel,
+            videos: [{ url: videoUrl } as Video],
+          };
+        } catch (error) {
+          console.error(
+            `Failed to fetch top videos for ${channel.atId}:`,
+            error
+          );
+          return channel; // エラー時は元の情報を返す
+        }
+      });
+      // ★ 更新された全チャンネルの配列を返す
+      return Promise.all(updatedChannelsPromises);
+    };
+
+    // ビデオの詳細情報を取得する関数
+    const fetchVideoInfo = async (videoUrl: string): Promise<Video> => {
+      console.log(`Fetching video info for ${videoUrl}`);
+      const result = await invoke<string>("dlp_get_video_info", { videoUrl });
+      const parsedResult = JSON.parse(result);
+      console.log("Fetched video info:", parsedResult);
+      // ★ 詳細情報を持つVideoオブジェクトを返す
+      return {
+        url: videoUrl,
+        id: parsedResult.id,
+        title: parsedResult.title,
+        thumbnail: parsedResult.thumbnail,
+        views: parsedResult.view_count,
+        date: parsedResult.upload_date,
+      };
+    };
+
+    // すべてのビデオの詳細情報を取得し、チャンネルリストを更新するラッパー関数
+    const fetchAllVideos = async (
+      currentChannels: Channel[]
+    ): Promise<Channel[]> => {
+      console.log("Fetching all video info...");
+      const updatedChannelsPromises = currentChannels.map(async (channel) => {
+        if (!channel.videos || channel.videos.length === 0) return channel;
+
+        const updatedVideosPromises = channel.videos.map(async (video) => {
+          try {
+            if (video.url) {
+              return await fetchVideoInfo(video.url);
+            }
+            return video;
+          } catch (error) {
+            console.error(
+              `Failed to fetch video info for ${video.url}:`,
+              error
+            );
+            return video; // エラー時は元の情報を返す
+          }
+        });
+        const updatedVideos = await Promise.all(updatedVideosPromises);
+        return { ...channel, videos: updatedVideos };
+      });
+      // ★ 更新された全チャンネルの配列を返す
+      return Promise.all(updatedChannelsPromises);
+    };
+
+    // すべてのデータ取得処理を順番に実行するメインの非同期関数
+    const executeSequentially = async () => {
+      try {
+        // 1. 全てのチャンネル情報を取得
+        console.log("--- Start: Fetching all channels ---");
+        const channels = await fetchAllChannels();
+        setChannelList(channels); // UIに進捗を反映
+        console.log("--- End: Fetching all channels ---");
+
+        // 2. 1で取得したリストを元に、全てのトップビデオ情報を取得
+        console.log("--- Start: Fetching all top videos ---");
+        const channelsWithTopVideos = await fetchAllTopVideos(channels);
+        setChannelList(channelsWithTopVideos); // UIに進捗を反映
+        console.log("--- End: Fetching all top videos ---");
+
+        // 3. 2で取得したリストを元に、全てのビデオ詳細情報を取得
+        console.log("--- Start: Fetching all video info ---");
+        const finalChannelList = await fetchAllVideos(channelsWithTopVideos);
+        setChannelList(finalChannelList); // UIに最終結果を反映
+        console.log("--- End: Fetching all video info ---");
+      } catch (error) {
+        console.error(
+          "An error occurred during the sequential fetch process:",
+          error
+        );
+      }
+    };
+
+    executeSequentially();
+  }, []); // 依存配列は空のまま
 
   const navigate: NavigateFunction = (newPage) => {
     if (newPage.name === page.name && newPage.id === page.id) return;
@@ -748,14 +813,35 @@ export default function App() {
   };
 
   const renderPage = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center h-screen">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ ease: "linear", duration: 1, repeat: Infinity }}
+          >
+            <Loader size={48} className="text-red-500" />
+          </motion.div>
+        </div>
+      );
+    }
+
     switch (page.name) {
       case "channel":
-        return <ChannelPage id={page.id!} navigate={navigate} />;
+        return (
+          <ChannelPage
+            id={page.id!}
+            navigate={navigate}
+            channels={channelList}
+          />
+        );
       case "video":
-        return <VideoPage id={page.id!} navigate={navigate} />;
+        return (
+          <VideoPage id={page.id!} navigate={navigate} channels={channelList} />
+        );
       case "home":
       default:
-        return <HomePage navigate={navigate} />;
+        return <HomePage navigate={navigate} channels={channelList} />;
     }
   };
 
@@ -772,7 +858,6 @@ export default function App() {
       >
         <Menu size={24} />
       </button>
-
       <main
         className={`transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-64" : "translate-x-0"
@@ -782,6 +867,13 @@ export default function App() {
           <AnimatePresence mode="wait">{renderPage()}</AnimatePresence>
         </div>
       </main>
+      <button
+        onClick={() => console.log(channelList)}
+        className="fixed bottom-4 right-4 z-30 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition-colors"
+      >
+        <Home size={24} />
+        ホーム
+      </button>
     </div>
   );
 }
