@@ -241,3 +241,85 @@ input[type="range"] {
     transform: rotate(360deg);
   }
 }
+
+.loading-spinner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none; /* 下の要素をクリックさせない */
+}
+
+.loading-spinner {
+  font-size: 4rem;
+  color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- 設定メニュー関連 --- */
+.settings-menu {
+  position: absolute;
+  bottom: 60px; /* コントロールバーの上 */
+  right: 20px;
+  background-color: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(5px);
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #ddd;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+.settings-button {
+  background: none;
+  border: none;
+  color: white;
+  text-align: left;
+  padding: 8px 12px;
+  width: 100%;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.settings-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 現在選択中のフォーマットをハイライト */
+.settings-button.active-format {
+  background-color: rgba(60, 120, 255, 0.7);
+  font-weight: bold;
+}
+
+/* controls-rightに設定ボタンが追加されたので調整 */
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* ボタン間のスペース */
+}

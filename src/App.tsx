@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Play, Download, Search } from "lucide-react";
 import VideoPlayer from "./components/player";
+import VideoPlayer2 from "./components/new_player";
 import { Link } from "react-router";
 
 interface VideoInfo {
@@ -30,6 +31,7 @@ const App = () => {
   const [error, setError] = useState("");
   const [channnelUrl, setChannelUrl] = useState("");
   const [channnelInfo, setChannelInfo] = useState("");
+  const testUrl = "https://www.youtube.com/watch?v=gq0C6-Qu1eQ"; // テスト用のYouTube URL
 
   const controlsTimeoutRef = useRef<number>();
 
@@ -238,13 +240,6 @@ const App = () => {
           </div>
         )}
 
-        {/* 動画プレイヤー */}
-        {streamUrl && (
-          <>
-            <VideoPlayer videoSrc={streamUrl} audioSrc={streamAudioUrl} />
-          </>
-        )}
-
         {isLoading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -288,12 +283,9 @@ const App = () => {
       >
         ホーム
       </Link>
-      <Link
-        to="/invidious-test"
-        className="mt-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center gap-2"
-      >
-        Invidiousテスト
-      </Link>
+      <div>
+        <VideoPlayer2 youtubeUrl={testUrl} />
+      </div>
     </div>
   );
 };

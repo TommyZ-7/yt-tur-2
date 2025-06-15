@@ -18,6 +18,21 @@ use dlp::get_channel::dlp_get_channel_info;
 use dlp::get_channel::dlp_get_channel_newvideo;
 use dlp::get_channel::dlp_get_video_info;
 
+mod inv; // Import the module for Invidious API
+use inv::inv_get::inv_get_channel_info;
+use inv::inv_get::inv_get_new_video;
+use inv::inv_get::inv_get_video;
+use inv::inv_get::inv_get_video_info;
+use inv::inv_get::inv_get_video_url;
+
+mod yda;
+use yda::yda_get::yda_get_channel_info;
+use yda::yda_get::yda_get_new_video;
+use yda::yda_get::yda_get_video;
+use yda::yda_get::yda_get_video_info;
+use yda::yda_get::yda_get_video_url;
+
+
 // --- Static Proxy Server Port ---
 // アプリケーション起動時に利用可能なポートを自動で選択します。
 static PROXY_PORT: Lazy<u16> =
@@ -174,6 +189,7 @@ async fn download_video(
 }
 
 
+
 // --- Proxy Server Implementation ---
 
 /// yt-dlpを使って実際のストリームURLを取得するヘルパー関数
@@ -298,6 +314,7 @@ fn setup_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -309,7 +326,17 @@ pub fn run() {
             download_video,
             dlp_get_channel_info,
             dlp_get_channel_newvideo,
-            dlp_get_video_info
+            dlp_get_video_info,
+            inv_get_channel_info,
+            inv_get_new_video,
+            inv_get_video,
+            inv_get_video_info,
+            inv_get_video_url,
+            yda_get_channel_info,
+            yda_get_new_video,
+            yda_get_video,
+            yda_get_video_info,
+            yda_get_video_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -405,9 +405,6 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
 };
 
 const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [streamUrl, setStreamUrl] = useState<string>("");
-  const [streamAudioUrl, setStreamAudioUrl] = useState<string>("");
   const [playVideoInfo, setPlayVideoInfo] = useState<VideoInfo | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<string>("");
   const [selectedAudioFormat, setSelectedAudioFormat] = useState<string>("");
@@ -432,28 +429,6 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
     setPlayVideoInfo(playInfo);
   };
 
-  const handleStreamVideo = async () => {
-    if (!videoInfo) return;
-
-    try {
-      const url = await invoke<string>("get_proxy_url", {
-        videoUrl: video.url,
-        formatId: selectedFormat || null,
-      });
-      console.log(`Streaming URL: ${url}`);
-
-      const audioUrl = await invoke<string>("get_proxy_url", {
-        videoUrl: video.url,
-        formatId: selectedAudioFormat || null,
-      });
-      setStreamAudioUrl(audioUrl);
-      setStreamUrl(url);
-    } catch (err) {
-      console.error("Error streaming video:", err);
-    }
-    setIsPlaying(true);
-  };
-
   return (
     <motion.div
       key={`video-${id}`}
@@ -469,16 +444,7 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
           layoutId={`video-player-${video.id}`}
           className="aspect-video bg-black rounded-2xl shadow-2xl flex items-center justify-center overflow-hidden"
         >
-          {isPlaying ? (
-            <VideoPlayer videoSrc={streamUrl} audioSrc={streamAudioUrl} />
-          ) : (
-            <div
-              className="w-full h-full bg-black flex items-center justify-center cursor-pointer"
-              onClick={() => handleStreamVideo()}
-            >
-              <PlayCircle className="text-white/80" size={100} />
-            </div>
-          )}
+          <VideoPlayer youtubeUrl={video.url} />
         </motion.div>
         <motion.h1
           className="text-3xl font-bold text-white mt-6"
@@ -512,54 +478,6 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
             >
               <ThumbsUp size={20} /> 1.2万
             </motion.button>
-          </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">
-              品質を選択:
-            </label>
-            <select
-              value={selectedFormat}
-              onChange={(e) => {
-                setSelectedFormat(e.target.value);
-
-                console.log(`Selected format: ${e.target.value}`);
-              }}
-              className="px-3 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {playVideoInfo?.formats.map((format) => (
-                <option key={format.format_id} value={format.format_id}>
-                  {format.format_id} {format.quality} ({format.ext})
-                </option>
-              ))}
-            </select>
-          </div>
-          {/* 音声フォーマット選択 */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">
-              音声フォーマットを選択:
-            </label>
-            <select
-              value={selectedAudioFormat}
-              onChange={(e) => {
-                setSelectedAudioFormat(e.target.value);
-                console.log(`Selected audio format: ${e.target.value}`);
-              }}
-              className="px-3 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {playVideoInfo?.formats.map((format) => (
-                <option key={format.format_id} value={format.format_id}>
-                  {format.format_id} {format.quality} ({format.ext})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <button
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
-              onClick={() => handleGetVideoInfo()}
-            >
-              F
-            </button>
           </div>
         </motion.div>
         <motion.div
@@ -642,12 +560,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const hasRun = useRef(false);
 
-  const debugChannelList = [
-    "@zzxk4sen",
-    "@hitoyado",
-    "@Mine_Explorer",
-    "@hinanotachiba7",
-  ]; // デバッグ用のチャンネルリスト
+  const debugChannelList = ["@hinanotachiba7"]; // デバッグ用のチャンネルリスト
   //
   useEffect(() => {
     if (hasRun.current) return;
