@@ -288,6 +288,12 @@ const App = () => {
       >
         ホーム
       </Link>
+      <Link
+        to="/invidious-test"
+        className="mt-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center gap-2"
+      >
+        Invidiousテスト
+      </Link>
     </div>
   );
 };
