@@ -10,7 +10,8 @@ import {
 } from "react-icons/fa";
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, backIn } from "framer-motion";
+import { ref } from "process";
 
 const customStyles = `
   @keyframes gradient-bg {
@@ -389,6 +390,7 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
   const playerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
   const LoadedRef = useRef(false);
+  const refreshRefTimeBackUp = useRef<number>(0);
 
   const hideControlsTimeout = () => {
     if (controlsTimeoutRef.current) {
@@ -486,6 +488,7 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
     formatId: string
   ) => {
     setIsLoading(true);
+    setIsPlaying(false);
     setVideoLoading(true);
     setShowSettings(false);
 
@@ -515,6 +518,7 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
         setSelectedAudioFormat(formatId);
         const newAudioUrl = await getStreamingUrl(youtubeUrl, formatId);
         setStreamAudioUrl(newAudioUrl);
+        video.play();
       }
     } catch (error) {
       console.error("ストリーミングURL取得エラー:", error);
@@ -526,24 +530,21 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
   };
 
   const handleRefresh = () => {
-    setRefetchTrigger((prev) => prev + 1);
     console.log("Refetching video formats and streaming URLs...");
+    refreshRefTimeBackUp.current = videoRef.current?.currentTime || 0;
     setVideoFormats([]);
     setAudioFormats([]);
     setStreamVideoUrl("");
     setStreamAudioUrl("");
     setSelectedVideoFormat(null);
     setSelectedAudioFormat(null);
-    setIsLoading(false);
-    setIsPlaying(false);
-    setVideoLoading(false);
-    setCurrentTime(0);
+    setVideoLoading(true);
     setDuration(0);
-    setVolume(1);
     setIsMuted(false);
     setIsFullscreen(false);
     setShowControls(true);
     LoadedRef.current = false; // 再度初期化
+    setRefetchTrigger((prev) => prev + 1);
     console.log("Player state reset for refetch.");
   };
 
@@ -623,7 +624,7 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
       if (!video || !audio) return;
 
       const syncAudioToVideo = () => {
-        if (Math.abs(audio.currentTime - video.currentTime) > 0.3) {
+        if (Math.abs(audio.currentTime - video.currentTime) > 0.1) {
           audio.currentTime = video.currentTime;
         }
       };
@@ -648,6 +649,10 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
       };
 
       const handlePlaying = () => {
+        if (refreshRefTimeBackUp.current !== 0) {
+          video.currentTime = refreshRefTimeBackUp.current;
+          refreshRefTimeBackUp.current = 0;
+        }
         setVideoLoading(false);
         setIsLoading(false);
         if (formatChangeRef.current) {
@@ -712,7 +717,33 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
   const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
 
   const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.log("Video error:", e);
+    console.log("Video error:", e.currentTarget.error);
+
+    if (e.currentTarget.error) {
+      if (
+        e.currentTarget.error.message ===
+        "MEDIA_ELEMENT_ERROR: Empty src attribute"
+      ) {
+        return; // src属性が空の場合は無視
+      }
+      setError(`動画の再生に失敗しました: ${e.currentTarget.error.message}`);
+      setVideoLoading(false);
+    }
+  };
+  const handleAudioError = (
+    e: React.SyntheticEvent<HTMLAudioElement, Event>
+  ) => {
+    console.log("Audio error:", e.currentTarget.error);
+    if (e.currentTarget.error) {
+      if (
+        e.currentTarget.error.message ===
+        "MEDIA_ELEMENT_ERROR: Empty src attribute"
+      ) {
+        return; // src属性が空の場合は無視
+      }
+      setError(`音声の再生に失敗しました: ${e.currentTarget.error.message}`);
+      setVideoLoading(false);
+    }
   };
 
   return (
@@ -723,19 +754,26 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
       }`}
       onMouseMove={showControlsTemporary}
       onMouseLeave={() => isPlaying && setShowControls(false)}
+      style={
+        videoLoading
+          ? {
+              background: `url(${thumbnailUrl}) 100% 100% / cover no-repeat`,
+            }
+          : {}
+      }
     >
       {/* Loading Overlay */}
 
       {/* Error Message */}
       {error && (
-        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="text-red-500 text-center p-4">
             <p className="text-lg">{error}</p>
             <button
               onClick={() => handleRefresh()}
               className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
             >
-              閉じる
+              再読み込み
             </button>
           </div>
         </div>
@@ -754,7 +792,7 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
       />
 
       {/* Audio Element (Hidden) */}
-      <audio ref={audioRef} src={streamAudioUrl} />
+      <audio ref={audioRef} src={streamAudioUrl} onError={handleAudioError} />
 
       {/* Video Loading Spinner */}
       {videoLoading && (
@@ -859,7 +897,10 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
                     {videoFormats.map((format) => (
                       <button
                         key={format.id}
-                        onClick={() => handleQualityChange("video", format.id)}
+                        onClick={() => {
+                          setVideoLoading(true);
+                          handleQualityChange("video", format.id);
+                        }}
                         className={`block w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-700 transition-colors duration-150 ${
                           selectedVideoFormat === format.id
                             ? "text-red-400"
@@ -875,7 +916,10 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
                     {audioFormats.map((format) => (
                       <button
                         key={format.id}
-                        onClick={() => handleQualityChange("audio", format.id)}
+                        onClick={() => {
+                          setVideoLoading(true);
+                          handleQualityChange("audio", format.id);
+                        }}
                         className={`block w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-700 transition-colors duration-150 ${
                           selectedAudioFormat === format.id
                             ? "text-red-400"

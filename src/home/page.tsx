@@ -5,10 +5,8 @@ import {
   Youtube,
   ListVideo,
   Menu,
-  X,
   PlayCircle,
   Users,
-  ThumbsUp,
   Calendar,
   Eye,
   Loader,
@@ -16,6 +14,7 @@ import {
 import "../App.css"; // グローバルスタイルをインポート
 import { invoke } from "@tauri-apps/api/core";
 import NewPlayer from "../components/new_player";
+import { formatNumberWithSlashes } from "../lib/lib";
 
 // --- 型定義 (TypeScript) ---
 interface Channel {
@@ -36,20 +35,6 @@ interface Video {
   thumbnail?: string;
   views?: string;
   date?: string;
-}
-
-interface VideoInfo {
-  title: string;
-  duration: string;
-  url: string;
-  formats: VideoFormat[];
-}
-
-interface VideoFormat {
-  format_id: string;
-  ext: string;
-  quality: string;
-  url: string;
 }
 
 interface PageState {
@@ -199,11 +184,11 @@ const VideoCard: FC<VideoCardProps> = ({ video, navigate }) => (
       <div className="text-sm text-neutral-400 flex items-center gap-4 mt-1">
         <div className="flex items-center gap-1.5">
           <Eye size={14} />
-          <span>{video.views}回視聴</span>
+          <span>{video.views}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Calendar size={14} />
-          <span>{video.date}</span>
+          <span>{formatNumberWithSlashes(video.date || "00000000")}</span>
         </div>
       </div>
     </div>
@@ -458,17 +443,8 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar size={16} />
-              <span>{video.date}</span>
+              <span>{formatNumberWithSlashes(video.date || "00000000")}</span>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="flex items-center gap-2 hover:text-white transition-colors"
-            >
-              <ThumbsUp size={20} /> 1.2万
-            </motion.button>
           </div>
         </motion.div>
         <motion.div
@@ -532,7 +508,8 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
                 </h4>
                 <p className="text-sm text-neutral-400 mt-1">{channel.name}</p>
                 <p className="text-xs text-neutral-500 mt-1">
-                  {rv.views}回視聴 • {rv.date}
+                  {rv.views}回視聴 •{" "}
+                  {formatNumberWithSlashes(rv.date || "00000000")}
                 </p>
               </div>
             </div>
@@ -700,7 +677,7 @@ export default function App() {
           isSidebarOpen ? "translate-x-64" : "translate-x-0"
         }`}
       >
-        <div className="container mx-auto px-4 md:px-8 py-8">
+        <div className="mx-auto px-4 md:px-8 py-8">
           <AnimatePresence mode="wait">{renderPage()}</AnimatePresence>
         </div>
       </main>
