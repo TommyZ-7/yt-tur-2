@@ -358,7 +358,6 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
   youtubeUrl,
   thumbnailUrl,
 }) => {
-  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [selectedVideoFormat, setSelectedVideoFormat] = useState<string | null>(
     null
   );

@@ -296,13 +296,51 @@ const HomePage: FC<PageProps> = ({ navigate, channels }) => (
 
 interface DetailPageProps extends PageProps {
   id: string;
+  handleUpdateChannelList: (newVideos: Video[]) => void;
 }
-const ChannelPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
+const ChannelPage: FC<DetailPageProps> = ({
+  id,
+  navigate,
+  channels,
+  handleUpdateChannelList,
+}) => {
   const channel = useMemo(
     () => channels.find((c) => c.id === id),
     [id, channels]
   );
   if (!channel) return <div>Channel not found</div>;
+  // チャンネルの動画をさらに読み込むハンドル
+  const handleLoadMoreVideos = async () => {
+    const fetchChannelTopVideoUrl = async (
+      channelID: string,
+      offset: number
+    ): Promise<string> => {
+      const result = await invoke<string>("dlp_get_channel_morevideo", {
+        channelUrl: "https://www.youtube.com/" + channelID + "/videos",
+        offset: offset,
+      });
+      return result;
+    };
+    const newVideos = await fetchChannelTopVideoUrl(
+      channel.atId,
+      channel.videos?.length || 0
+    );
+    console.log("Fetched new videos:", newVideos);
+    const parsedVideos = JSON.parse(newVideos);
+    const returnVideos: Video[] = [];
+    for (const video of parsedVideos) {
+      // チャンネルの動画に追加
+      returnVideos.push({
+        id: video.video_id,
+        url: video.youtube_url,
+        title: video.title,
+        thumbnail: video.thumbnail_url,
+        views: video.view_count,
+        date: video.date,
+      });
+    }
+    handleUpdateChannelList(returnVideos);
+  };
   return (
     <motion.div
       key={`channel-${id}`}
@@ -353,16 +391,6 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
             <div>{channel.videos?.length || 0}本の動画</div>
           </motion.div>
         </div>
-        <motion.button
-          className="mt-4 md:mt-0 md:ml-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition-colors duration-300 shadow-lg"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4, type: "spring" }}
-        >
-          登録する
-        </motion.button>
       </div>
       <motion.p
         className="mt-8 text-neutral-300 max-w-3xl"
@@ -383,6 +411,17 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
           {channel.videos?.map((video) => (
             <VideoCard key={video.id} video={video} navigate={navigate} />
           ))}
+          <div className="col-span-full">
+            <button
+              className="w-full"
+              onClick={() => {
+                handleLoadMoreVideos();
+                console.log("Load more videos clicked");
+              }}
+            >
+              さらに読み込む
+            </button>
+          </div>
         </motion.div>
       </div>
     </motion.div>
@@ -469,13 +508,6 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
             </h3>
             <p className="text-sm text-neutral-400">{channel.subscribers}</p>
           </div>
-          <motion.button
-            className="ml-auto bg-white hover:bg-neutral-200 text-black font-bold py-2 px-5 rounded-full transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            登録済み
-          </motion.button>
         </motion.div>
       </div>
       <motion.div
@@ -503,7 +535,7 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
                 />
               </motion.div>
               <div>
-                <h4 className="font-semibold text-white leading-tight group-hover:text-red-400 transition-colors">
+                <h4 className="font-semibold text-white leading-tight group-hover:text-red-400 transition-colors line-clamp-2">
                   {rv.title}
                 </h4>
                 <p className="text-sm text-neutral-400 mt-1">{channel.name}</p>
@@ -524,7 +556,6 @@ export default function App() {
   const [page, setPage] = useState<PageState>({ name: "home", id: null });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [channelList, setChannelList] = useState<Channel[]>([]);
-  const channelListRef = useRef<Channel[]>([]); // チャンネルリストの参照を保持
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const hasRun = useRef(false);
 
@@ -626,6 +657,21 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  // channelPageで動画をさらに読み込み追加するハンドル
+  const handleUpdateChannelList = (newVideos: Video[]) => {
+    setChannelList((prevChannels) =>
+      prevChannels.map((channel) => {
+        if (channel.id === page.id) {
+          return {
+            ...channel,
+            videos: [...(channel.videos || []), ...newVideos],
+          };
+        }
+        return channel;
+      })
+    );
+  };
+
   const renderPage = () => {
     if (isLoading) {
       return (
@@ -647,11 +693,17 @@ export default function App() {
             id={page.id!}
             navigate={navigate}
             channels={channelList}
+            handleUpdateChannelList={handleUpdateChannelList}
           />
         );
       case "video":
         return (
-          <VideoPage id={page.id!} navigate={navigate} channels={channelList} />
+          <VideoPage
+            id={page.id!}
+            navigate={navigate}
+            channels={channelList}
+            handleUpdateChannelList={handleUpdateChannelList}
+          />
         );
       case "home":
       default:

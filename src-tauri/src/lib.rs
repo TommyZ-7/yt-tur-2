@@ -17,6 +17,7 @@ mod dlp; // Import the module for channel information
 use dlp::get_channel::dlp_get_channel_info;
 use dlp::get_channel::dlp_get_channel_newvideo;
 use dlp::get_channel::dlp_get_video_info;
+use dlp::get_channel::dlp_get_channel_morevideo;
 
 mod inv; // Import the module for Invidious API
 use inv::inv_get::inv_get_channel_info;
@@ -327,6 +328,7 @@ pub fn run() {
             dlp_get_channel_info,
             dlp_get_channel_newvideo,
             dlp_get_video_info,
+            dlp_get_channel_morevideo,
             inv_get_channel_info,
             inv_get_new_video,
             inv_get_video,
