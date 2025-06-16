@@ -3,6 +3,8 @@
 use tauri_plugin_shell::ShellExt;
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
+use encoding_rs::SHIFT_JIS;
+use std::str;
 
 #[derive(Deserialize, Debug)]
 struct VideoInfo {
@@ -95,6 +97,19 @@ pub async fn dlp_get_channel_info(app_handle: tauri::AppHandle, channel_url: Str
     Ok(serde_json::to_string(&channel_info).map_err(|e| format!("Failed to serialize channel info: {}", e))?)   
 }
 
+
+#[derive(Debug, Serialize)]
+struct Record {
+    youtube_url: String,
+    title: String,
+    video_id: String,
+    date: String,
+    view_count: String,
+    thumbnail_url: String,
+}
+
+
+
 #[tauri::command]
 pub async fn dlp_get_channel_newvideo(app_handle: tauri::AppHandle, channel_url: String) -> Result<String, String> {
         let shell = app_handle.shell();
@@ -105,27 +120,68 @@ pub async fn dlp_get_channel_newvideo(app_handle: tauri::AppHandle, channel_url:
     let output = shell
         .sidecar("ytdlp-sidecar")
         .unwrap()
+        .arg("--no-warnings")
         .arg("--playlist-items")
-        .arg("1")
+        .arg("1-3")
         .arg("--print")
         .arg("%(webpage_url)s")
+        .arg("--print")
+        .arg("%(title)s")
+        .arg("--print")
+        .arg("%(id)s")
+        .arg("--print")
+        .arg("%(upload_date)s")
+        .arg("--print")
+        .arg("%(view_count)s")
+        .arg("--print")
+        .arg("%(thumbnail)s")
         .arg(&channel_url)
         .output()
         .await
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
 
-    if !output.status.success() {
-        return Err(format!(
-            "yt-dlp error: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
+     // レコードは2つの改行コード `[10, 10]` で区切られているため、それで分割する
+    let records_bytes = output.stdout.split(|w| *w == 10).filter(|s| !s.is_empty());
+
+    // 6つのフィールドで1レコードとしてグループ化する
+    let mut chunked_records = Vec::new();
+    let mut current_chunk = Vec::new();
+    for item in records_bytes {
+        current_chunk.push(item);
+        if current_chunk.len() == 6 {
+            chunked_records.push(current_chunk.clone());
+            current_chunk.clear();
+        }
     }
 
-    println!("Output: {}", String::from_utf8_lossy(&output.stdout));
+    let mut video_infos: Vec<Record> = Vec::new();
+
+    for record in chunked_records {
+        // 2番目の要素がShift_JISエンコードされたタイトル
+        let (title_cow, _encoding_used, _had_errors) = SHIFT_JIS.decode(record[1]);
+        
+        let info = Record {
+            youtube_url:   str::from_utf8(record[0]).unwrap_or_default().to_string(),
+            title:         title_cow.into_owned(), // デコードしたタイトル
+            video_id:      str::from_utf8(record[2]).unwrap_or_default().to_string(),
+            date:          str::from_utf8(record[3]).unwrap_or_default().to_string(),
+            view_count:   str::from_utf8(record[4]).unwrap_or_default().to_string(),
+            thumbnail_url: str::from_utf8(record[5]).unwrap_or_default().to_string(),
+        };
+        video_infos.push(info);
+    }
+    
+    // 結果をきれいに表示
+    for (i, info) in video_infos.iter().enumerate() {
+        println!("--- 動画 {} ---", i + 1);
+        println!("{:#?}\n", info);
+    }
 
 
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    
+    Ok(serde_json::to_string(&video_infos)
+        .map_err(|e| format!("Failed to serialize video info: {}", e))?)
+       
 }
 
 

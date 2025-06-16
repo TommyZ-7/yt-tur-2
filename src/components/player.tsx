@@ -17,10 +17,10 @@ interface VideoInfo {
   title: string;
   duration: string;
   url: string;
-  formats: VideoFormat[];
+  formats: Formats[];
 }
 
-interface VideoFormat {
+interface Formats {
   format_id: string;
   ext: string;
   quality: string;

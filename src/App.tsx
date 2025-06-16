@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Play, Download, Search } from "lucide-react";
 import VideoPlayer from "./components/player";
-import VideoPlayer2 from "./components/new_player";
+import NewPlayer from "./components/new_player";
 import { Link } from "react-router";
 
 interface VideoInfo {
@@ -31,7 +31,7 @@ const App = () => {
   const [error, setError] = useState("");
   const [channnelUrl, setChannelUrl] = useState("");
   const [channnelInfo, setChannelInfo] = useState("");
-  const testUrl = "https://www.youtube.com/watch?v=gq0C6-Qu1eQ"; // テスト用のYouTube URL
+  const testUrl = "https://www.youtube.com/watch?v=Mas5eQ_sb4o"; // テスト用のYouTube URL
 
   const controlsTimeoutRef = useRef<number>();
 
@@ -283,9 +283,7 @@ const App = () => {
       >
         ホーム
       </Link>
-      <div>
-        <VideoPlayer2 youtubeUrl={testUrl} />
-      </div>
+      <div></div>
     </div>
   );
 };

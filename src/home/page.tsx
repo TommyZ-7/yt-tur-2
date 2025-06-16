@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import "../App.css"; // グローバルスタイルをインポート
 import { invoke } from "@tauri-apps/api/core";
-import VideoPlayer from "../components/player";
+import NewPlayer from "../components/new_player";
 
 // --- 型定義 (TypeScript) ---
 interface Channel {
@@ -254,7 +254,7 @@ const ChannelCard: FC<ChannelCardProps> = ({ channel, navigate }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {channel.videos?.slice(0, 3).map((video) => (
             <div
-              key={video.url}
+              key={video.id}
               className="group cursor-pointer"
               onClick={() => navigate({ name: "video", id: video.id ?? null })}
             >
@@ -405,9 +405,6 @@ const ChannelPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
 };
 
 const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
-  const [playVideoInfo, setPlayVideoInfo] = useState<VideoInfo | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<string>("");
-  const [selectedAudioFormat, setSelectedAudioFormat] = useState<string>("");
   const videoInfo = useMemo(() => {
     for (const channel of channels) {
       const video = channel.videos?.find((v) => v.id === id);
@@ -420,15 +417,6 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
   const { video, channel } = videoInfo;
   const relatedVideos = channel.videos?.filter((v) => v.id !== id) || [];
 
-  const handleGetVideoInfo = async () => {
-    if (!video.url) return;
-    const playInfo = await invoke<VideoInfo>("get_video_info", {
-      videoUrl: video.url,
-    });
-    console.log("Fetched video info:", playInfo);
-    setPlayVideoInfo(playInfo);
-  };
-
   return (
     <motion.div
       key={`video-${id}`}
@@ -437,14 +425,17 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
       animate="in"
       exit="out"
       transition={pageTransition}
-      className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+      className="grid grid-cols-1 lg:grid-cols-4 gap-8"
     >
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-3">
         <motion.div
           layoutId={`video-player-${video.id}`}
-          className="aspect-video bg-black rounded-2xl shadow-2xl flex items-center justify-center overflow-hidden"
+          className="aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden"
         >
-          <VideoPlayer youtubeUrl={video.url} />
+          <NewPlayer
+            youtubeUrl={video.url}
+            thumbnailUrl={video.thumbnail || ""}
+          />
         </motion.div>
         <motion.h1
           className="text-3xl font-bold text-white mt-6"
@@ -512,7 +503,7 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
         </motion.div>
       </div>
       <motion.div
-        className="lg:col-span-1"
+        className="lg:col-span-1 "
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.4 }}
@@ -560,8 +551,9 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const hasRun = useRef(false);
 
-  const debugChannelList = ["@hinanotachiba7"]; // デバッグ用のチャンネルリスト
+  const debugChannelList = ["@hinanotachiba7", "@bokuwata_ch"]; // デバッグ用のチャンネルリスト
   //
+
   useEffect(() => {
     if (hasRun.current) return;
     hasRun.current = true;
@@ -583,7 +575,22 @@ export default function App() {
         subscribers: parsedResult.channel_followers,
         videos: [],
       };
+      // 最新動画を取得してチャンネルに追加
+      const topVideoUrl = await fetchChannelTopVideoUrl(channelID);
+      const parsedResultTopVideo = JSON.parse(topVideoUrl);
+
+      channel.videos = parsedResultTopVideo.map((video: any) => ({
+        id: video.video_id,
+        url: video.youtube_url,
+        title: video.title,
+        thumbnail: video.thumbnail_url,
+        views: video.view_count,
+        date: video.date,
+      }));
+      console.log("Fetched channel videos:", channel);
+
       setChannelList((prev) => [...prev, channel]); // UIに進捗を反映
+
       // ★ 取得したチャンネルオブジェクトを返す
       return channel;
     };
@@ -606,86 +613,14 @@ export default function App() {
       return channels;
     };
 
-    // チャンネルのトップビデオ（最新動画1本）のURLを取得する関数
+    // チャンネルのトップビデオ（最新動画3本）のURLを取得する関数
     const fetchChannelTopVideoUrl = async (
       channelID: string
     ): Promise<string> => {
       const result = await invoke<string>("dlp_get_channel_newvideo", {
-        channelUrl: "https://www.youtube.com/" + channelID,
+        channelUrl: "https://www.youtube.com/" + channelID + "/videos",
       });
-      console.log("Fetched top video url for channel:", result);
-      // ★ 取得した動画URLを返す
       return result;
-    };
-
-    // すべてのチャンネルのトップビデオ情報を取得し、チャンネルリストを更新するラッパー関数
-    const fetchAllTopVideos = async (
-      currentChannels: Channel[]
-    ): Promise<Channel[]> => {
-      // mapとPromise.allを使って並列処理
-      const updatedChannelsPromises = currentChannels.map(async (channel) => {
-        try {
-          const videoUrl = await fetchChannelTopVideoUrl(channel.atId);
-          return {
-            ...channel,
-            videos: [{ url: videoUrl } as Video],
-          };
-        } catch (error) {
-          console.error(
-            `Failed to fetch top videos for ${channel.atId}:`,
-            error
-          );
-          return channel; // エラー時は元の情報を返す
-        }
-      });
-      // ★ 更新された全チャンネルの配列を返す
-      return Promise.all(updatedChannelsPromises);
-    };
-
-    // ビデオの詳細情報を取得する関数
-    const fetchVideoInfo = async (videoUrl: string): Promise<Video> => {
-      console.log(`Fetching video info for ${videoUrl}`);
-      const result = await invoke<string>("dlp_get_video_info", { videoUrl });
-      const parsedResult = JSON.parse(result);
-      console.log("Fetched video info:", parsedResult);
-      // ★ 詳細情報を持つVideoオブジェクトを返す
-      return {
-        url: videoUrl,
-        id: parsedResult.id,
-        title: parsedResult.title,
-        thumbnail: parsedResult.thumbnail,
-        views: parsedResult.view_count,
-        date: parsedResult.upload_date,
-      };
-    };
-
-    // すべてのビデオの詳細情報を取得し、チャンネルリストを更新するラッパー関数
-    const fetchAllVideos = async (
-      currentChannels: Channel[]
-    ): Promise<Channel[]> => {
-      console.log("Fetching all video info...");
-      const updatedChannelsPromises = currentChannels.map(async (channel) => {
-        if (!channel.videos || channel.videos.length === 0) return channel;
-
-        const updatedVideosPromises = channel.videos.map(async (video) => {
-          try {
-            if (video.url) {
-              return await fetchVideoInfo(video.url);
-            }
-            return video;
-          } catch (error) {
-            console.error(
-              `Failed to fetch video info for ${video.url}:`,
-              error
-            );
-            return video; // エラー時は元の情報を返す
-          }
-        });
-        const updatedVideos = await Promise.all(updatedVideosPromises);
-        return { ...channel, videos: updatedVideos };
-      });
-      // ★ 更新された全チャンネルの配列を返す
-      return Promise.all(updatedChannelsPromises);
     };
 
     // すべてのデータ取得処理を順番に実行するメインの非同期関数
@@ -696,18 +631,6 @@ export default function App() {
         const channels = await fetchAllChannels();
         setChannelList(channels); // UIに進捗を反映
         console.log("--- End: Fetching all channels ---");
-
-        // 2. 1で取得したリストを元に、全てのトップビデオ情報を取得
-        console.log("--- Start: Fetching all top videos ---");
-        const channelsWithTopVideos = await fetchAllTopVideos(channels);
-        setChannelList(channelsWithTopVideos); // UIに進捗を反映
-        console.log("--- End: Fetching all top videos ---");
-
-        // 3. 2で取得したリストを元に、全てのビデオ詳細情報を取得
-        console.log("--- Start: Fetching all video info ---");
-        const finalChannelList = await fetchAllVideos(channelsWithTopVideos);
-        setChannelList(finalChannelList); // UIに最終結果を反映
-        console.log("--- End: Fetching all video info ---");
       } catch (error) {
         console.error(
           "An error occurred during the sequential fetch process:",
@@ -721,6 +644,7 @@ export default function App() {
 
   const navigate: NavigateFunction = (newPage) => {
     if (newPage.name === page.name && newPage.id === page.id) return;
+    console.log("Navigating to:", newPage);
     setPage(newPage);
     window.scrollTo(0, 0);
   };
@@ -780,13 +704,6 @@ export default function App() {
           <AnimatePresence mode="wait">{renderPage()}</AnimatePresence>
         </div>
       </main>
-      <button
-        onClick={() => console.log(channelList)}
-        className="fixed bottom-4 right-4 z-30 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition-colors"
-      >
-        <Home size={24} />
-        ホーム
-      </button>
     </div>
   );
 }

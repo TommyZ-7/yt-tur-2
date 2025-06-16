@@ -1,24 +1,100 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Settings,
-  MoreVertical,
-  Check,
-} from "lucide-react";
-
+  FaPlay,
+  FaPause,
+  FaVolumeUp,
+  FaVolumeMute,
+  FaExpand,
+  FaCompress,
+  FaSpinner,
+  FaCog,
+} from "react-icons/fa";
 import { invoke } from "@tauri-apps/api/core";
+import { useState, useRef, useEffect, FC } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+const customStyles = `
+  @keyframes gradient-bg {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .animate-gradient-bg {
+    background-size: 400% 400%;
+    animation: gradient-bg 10s ease infinite;
+  }
+`;
+
+/**
+ * LoadingOverlayコンポーネント
+ * Framer Motionによるアニメーションを担当
+ */
+const LoadingOverlay = () => {
+  // オーバーレイ全体（フェードイン/アウト）のバリアント
+  const overlayVariants = {
+    hidden: { opacity: 0, transition: { duration: 0.5 } },
+    visible: { opacity: 0.5, transition: { duration: 0.5 } },
+  };
+
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      exit="hidden"
+      variants={overlayVariants}
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 animate-gradient-bg"
+    >
+      {/* 1. シャインエフェクト */}
+      <motion.div
+        className="absolute top-0 h-full w-full skew-x-[-25deg] bg-gradient-to-r from-transparent via-white/10 to-transparent"
+        initial={{ x: "-150%" }}
+        animate={{ x: "150%" }}
+        transition={{ duration: 3, repeat: Infinity, ease: "linear", delay: 1 }}
+      />
+
+      {/* 2. SVGスピナー */}
+      <motion.div
+        className="w-16 h-16"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+      >
+        <svg viewBox="0 0 50 50" className="w-full h-full">
+          <motion.circle
+            cx="25"
+            cy="25"
+            r="20"
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="5"
+            strokeLinecap="round"
+            // strokeDasharray と strokeDashoffset をアニメーションさせる
+            initial={{
+              strokeDasharray: "1, 200",
+              strokeDashoffset: 0,
+            }}
+            animate={{
+              strokeDasharray: ["1, 200", "89, 200", "89, 200"],
+              strokeDashoffset: [0, -35, -124],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        </svg>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 interface VideoInfo {
   title: string;
   duration: string;
   url: string;
-  formats: VideoFormat[];
+  formats: Formats[];
 }
 
-interface VideoFormat {
+interface Formats {
   format_id: string;
   ext: string;
   quality: string;
@@ -38,14 +114,12 @@ interface SettingAudioFormat {
   codec: string;
 }
 
-// ダミー関数
 const getVideoFormats = async (youtubeUrl: string) => {
   const info = await invoke<VideoInfo>("get_video_info", {
     videoUrl: youtubeUrl,
   });
   console.log("Video info:", info);
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
+  // (フォーマットのハードコード部分は省略)
   const audioFormats: SettingAudioFormat[] = [];
   const videoFormats: SettingVideoFormat[] = [];
 
@@ -253,8 +327,11 @@ const getVideoFormats = async (youtubeUrl: string) => {
         hfr: true,
       });
   }
-  console.log("Video formats:", videoFormats);
-  console.log("Audio formats:", audioFormats);
+
+  // 最高の品質をデフォルトにするためにソートする例 (任意)
+  videoFormats.sort((a, b) => parseInt(b.quality) - parseInt(a.quality));
+  audioFormats.sort((a, b) => parseInt(b.quality) - parseInt(a.quality));
+
   return {
     videoFormats,
     audioFormats,
@@ -262,492 +339,572 @@ const getVideoFormats = async (youtubeUrl: string) => {
 };
 
 const getStreamingUrl = async (url: string, format: string) => {
-  const StreamUrl = await invoke<string>("get_proxy_url", {
+  const streamUrl = await invoke<string>("get_proxy_url", {
     videoUrl: url,
     formatId: format,
   });
-
-  console.log("Video stream URL:", StreamUrl);
-
-  return StreamUrl;
+  console.log(`Stream URL for format ${format}:`, streamUrl);
+  return streamUrl;
 };
 
-interface VideoFormat {
-  id: string;
-  quality: string;
-  codec: string;
-}
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
 
-interface VideoPlayerProps {
-  youtubeUrl: string;
-}
-
-const VideoPlayer2: React.FC<VideoPlayerProps> = ({ youtubeUrl }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const hideTimeoutRef = useRef<NodeJS.Timeout>();
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(1);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-
+const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
+  youtubeUrl,
+  thumbnailUrl,
+}) => {
+  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
+  const [selectedVideoFormat, setSelectedVideoFormat] = useState<string | null>(
+    null
+  );
+  const [selectedAudioFormat, setSelectedAudioFormat] = useState<string | null>(
+    null
+  );
   const [videoFormats, setVideoFormats] = useState<SettingVideoFormat[]>([]);
   const [audioFormats, setAudioFormats] = useState<SettingAudioFormat[]>([]);
-  const [selectedVideoFormat, setSelectedVideoFormat] = useState("137");
-  const [selectedAudioFormat, setSelectedAudioFormat] = useState("140");
+  const [streamVideoUrl, setStreamVideoUrl] = useState("");
+  const [streamAudioUrl, setStreamAudioUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [showControls, setShowControls] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const timeBackupRef = useRef<number>(0);
+  const formatChangeRef = useRef<boolean>(false);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
-  const [videoUrl, setVideoUrl] = useState("");
-  const [audioUrl, setAudioUrl] = useState("");
-  const [formatsLoading, setFormatsLoading] = useState(false);
-  const [streamsLoading, setStreamsLoading] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+  const LoadedRef = useRef(false);
 
-  // コントロール表示/非表示制御
-  const showControlsTemporarily = useCallback(() => {
+  const hideControlsTimeout = () => {
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying && !isDragging) {
+        setShowControls(false);
+      }
+    }, 3000);
+  };
+
+  const showControlsTemporary = () => {
     setShowControls(true);
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-    }
-    if (isPlaying) {
-      hideTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-    }
-  }, [isPlaying]);
+    hideControlsTimeout();
+  };
 
-  // マウス操作でコントロール表示
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleMouseMove = () => showControlsTemporarily();
-    const handleMouseLeave = () => {
-      if (isPlaying) {
-        setShowControls(false);
-        if (hideTimeoutRef.current) {
-          clearTimeout(hideTimeoutRef.current);
-        }
-      }
-    };
-
-    container.addEventListener("mousemove", handleMouseMove);
-    container.addEventListener("mouseleave", handleMouseLeave);
-
-    return () => {
-      container.removeEventListener("mousemove", handleMouseMove);
-      container.removeEventListener("mouseleave", handleMouseLeave);
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-    };
-  }, [showControlsTemporarily, isPlaying]);
-
-  // 再生状態が変わったときのコントロール表示制御
-  useEffect(() => {
-    if (!isPlaying) {
-      setShowControls(true);
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-    } else {
-      showControlsTemporarily();
-    }
-  }, [isPlaying, showControlsTemporarily]);
-
-  // フォーマット一覧を取得
-  const loadFormats = useCallback(async () => {
-    if (!youtubeUrl) return;
-
-    setFormatsLoading(true);
-    try {
-      const formats = await getVideoFormats(youtubeUrl);
-      setVideoFormats(formats.videoFormats);
-      setAudioFormats(formats.audioFormats);
-    } catch (error) {
-      console.error("フォーマット取得エラー:", error);
-    } finally {
-      setFormatsLoading(false);
-    }
-  }, [youtubeUrl]);
-
-  // ストリーミングURLを取得
-  const loadStreams = useCallback(async () => {
-    if (!youtubeUrl || !selectedVideoFormat || !selectedAudioFormat) return;
-
-    setStreamsLoading(true);
-    try {
-      const [vUrl, aUrl] = await Promise.all([
-        getStreamingUrl(youtubeUrl, selectedVideoFormat),
-        getStreamingUrl(youtubeUrl, selectedAudioFormat),
-      ]);
-      setVideoUrl(vUrl);
-      setAudioUrl(aUrl);
-    } catch (error) {
-      console.error("ストリーム取得エラー:", error);
-    } finally {
-      setStreamsLoading(false);
-    }
-  }, [youtubeUrl, selectedVideoFormat, selectedAudioFormat]);
-
-  // 初期化
-  useEffect(() => {
-    loadFormats();
-  }, [loadFormats]);
-
-  // フォーマット選択後にストリーム取得
-  useEffect(() => {
-    if (videoFormats.length > 0 && audioFormats.length > 0) {
-      loadStreams();
-    }
-  }, [loadStreams, videoFormats, audioFormats]);
-
-  // 動画と音声の同期制御
-  const syncPlayback = useCallback(async () => {
-    if (!videoRef.current || !audioRef.current) return;
-
+  const togglePlay = () => {
     const video = videoRef.current;
     const audio = audioRef.current;
 
-    await Promise.all([
-      new Promise((resolve) => {
-        if (video.readyState >= 3) resolve(null);
-        else
-          video.addEventListener("canplay", () => resolve(null), {
-            once: true,
-          });
-      }),
-      new Promise((resolve) => {
-        if (audio.readyState >= 3) resolve(null);
-        else
-          audio.addEventListener("canplay", () => resolve(null), {
-            once: true,
-          });
-      }),
-    ]);
-
-    const targetTime = Math.max(video.currentTime, audio.currentTime);
-    video.currentTime = targetTime;
-    audio.currentTime = targetTime;
+    if (!video || !audio) return;
 
     if (isPlaying) {
-      await Promise.all([video.play(), audio.play()]);
-    } else {
       video.pause();
       audio.pause();
-    }
-  }, [isPlaying]);
-
-  // 再生制御
-  const togglePlay = async () => {
-    if (!videoRef.current || !audioRef.current) return;
-
-    setIsLoading(true);
-
-    try {
-      if (isPlaying) {
-        videoRef.current.pause();
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        await syncPlayback();
-        setIsPlaying(true);
+    } else {
+      video.play();
+      audio.play();
+      if (formatChangeRef.current) {
+        video.currentTime = timeBackupRef.current;
+        audio.currentTime = timeBackupRef.current;
+        formatChangeRef.current = false;
       }
-    } catch (error) {
-      console.error("再生エラー:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // 時間更新
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const updateTime = () => {
-      setCurrentTime(video.currentTime);
-      setDuration(video.duration || 0);
-    };
-
-    video.addEventListener("timeupdate", updateTime);
-    video.addEventListener("loadedmetadata", updateTime);
-
-    return () => {
-      video.removeEventListener("timeupdate", updateTime);
-      video.removeEventListener("loadedmetadata", updateTime);
-    };
-  }, [videoUrl]);
-
-  // シーク操作
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!videoRef.current || !audioRef.current || !duration) return;
+    const video = videoRef.current;
+    const audio = audioRef.current;
+    const progressBar = e.currentTarget;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    const newTime = percent * duration;
+    if (!video || !audio || !duration) return;
 
-    videoRef.current.currentTime = newTime;
-    audioRef.current.currentTime = newTime;
+    const rect = progressBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const newTime = (clickX / rect.width) * duration;
+
+    video.currentTime = newTime;
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
   };
 
-  // 音量制御
-  const handleVolumeChange = (newVolume: number) => {
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    const audio = audioRef.current;
+
+    if (!audio) return;
+
     setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
+    audio.volume = newVolume;
+    setIsMuted(newVolume === 0);
   };
 
   const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isMuted) {
+      audio.volume = volume;
+      setIsMuted(false);
+    } else {
+      audio.volume = 0;
+      setIsMuted(true);
     }
   };
 
-  // 時間フォーマット
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  const toggleFullscreen = () => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    if (!isFullscreen) {
+      if (player.requestFullscreen) {
+        player.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
   };
 
-  const progress = duration ? (currentTime / duration) * 100 : 0;
-  const isStreamReady = videoUrl && audioUrl && !streamsLoading;
+  const handleQualityChange = async (
+    type: "video" | "audio",
+    formatId: string
+  ) => {
+    setIsLoading(true);
+    setVideoLoading(true);
+    setShowSettings(false);
+
+    const video = videoRef.current;
+    const audio = audioRef.current;
+    if (!video || !audio) return;
+    timeBackupRef.current = video.currentTime;
+    formatChangeRef.current = true;
+    console.log(`Changing quality for ${type} to format ID: ${formatId}`);
+    console.log("Current time before change:", timeBackupRef.current);
+
+    // 動画と音声を一時停止
+    if (video) {
+      video.pause();
+    }
+    if (audio) {
+      audio.pause();
+    }
+
+    try {
+      // 新しいストリーミングURLを取得（非同期処理を待つ）
+      if (type === "video") {
+        setSelectedVideoFormat(formatId);
+        const newVideoUrl = await getStreamingUrl(youtubeUrl, formatId);
+        setStreamVideoUrl(newVideoUrl);
+      } else {
+        setSelectedAudioFormat(formatId);
+        const newAudioUrl = await getStreamingUrl(youtubeUrl, formatId);
+        setStreamAudioUrl(newAudioUrl);
+      }
+    } catch (error) {
+      console.error("ストリーミングURL取得エラー:", error);
+      // エラー処理が必要に応じて追加
+    } finally {
+      setIsLoading(false);
+      setIsPlaying(true); // 再生状態を復元
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefetchTrigger((prev) => prev + 1);
+    console.log("Refetching video formats and streaming URLs...");
+    setVideoFormats([]);
+    setAudioFormats([]);
+    setStreamVideoUrl("");
+    setStreamAudioUrl("");
+    setSelectedVideoFormat(null);
+    setSelectedAudioFormat(null);
+    setIsLoading(false);
+    setIsPlaying(false);
+    setVideoLoading(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setVolume(1);
+    setIsMuted(false);
+    setIsFullscreen(false);
+    setShowControls(true);
+    LoadedRef.current = false; // 再度初期化
+    console.log("Player state reset for refetch.");
+  };
+
+  useEffect(() => {
+    const initializePlayer = async () => {
+      if (!youtubeUrl) {
+        setError("YouTubeのURLを入力してください");
+        return;
+      }
+
+      setIsLoading(true);
+      setVideoLoading(true);
+      setError("");
+      setStreamVideoUrl("");
+      setStreamAudioUrl("");
+
+      try {
+        const formatsResult = await getVideoFormats(youtubeUrl);
+
+        if (
+          !formatsResult ||
+          !formatsResult.videoFormats ||
+          !formatsResult.audioFormats
+        ) {
+          throw new Error("フォーマット情報の取得に失敗しました");
+        }
+
+        const { videoFormats, audioFormats } = formatsResult;
+        setVideoFormats(videoFormats);
+        setAudioFormats(audioFormats);
+
+        if (videoFormats.length === 0 || audioFormats.length === 0) {
+          setError("動画または音声のフォーマットが見つかりませんでした");
+          setVideoLoading(false);
+          return;
+        }
+
+        const selectedVideo = videoFormats[0];
+        const selectedAudio = audioFormats[0];
+
+        if (!selectedVideo?.id || !selectedAudio?.id) {
+          throw new Error("有効なフォーマットが見つかりません");
+        }
+
+        setSelectedVideoFormat(selectedVideo.id);
+        setSelectedAudioFormat(selectedAudio.id);
+
+        const videoStreamUrl = await getStreamingUrl(
+          youtubeUrl,
+          selectedVideo.id
+        );
+        const audioStreamUrl = await getStreamingUrl(
+          youtubeUrl,
+          selectedAudio.id
+        );
+
+        if (!videoStreamUrl || !audioStreamUrl) {
+          throw new Error("ストリーミングURLの取得に失敗しました");
+        }
+
+        setStreamVideoUrl(videoStreamUrl);
+        setStreamAudioUrl(audioStreamUrl);
+        console.log("Streaming URLs set:", {
+          videoStreamUrl,
+          audioStreamUrl,
+        });
+      } catch (err) {
+        console.error("エラーが発生:", err);
+        setError(`エラー: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+
+    const handleVideoEvents = () => {
+      const video = videoRef.current;
+      const audio = audioRef.current;
+
+      if (!video || !audio) return;
+
+      const syncAudioToVideo = () => {
+        if (Math.abs(audio.currentTime - video.currentTime) > 0.3) {
+          audio.currentTime = video.currentTime;
+        }
+      };
+
+      const handleTimeUpdate = () => {
+        setCurrentTime(video.currentTime);
+        syncAudioToVideo();
+      };
+
+      const handleLoadedMetadata = () => {
+        setDuration(video.duration);
+        console.log("Video metadata loaded:", {
+          duration: video.duration,
+          currentTime: video.currentTime,
+        });
+      };
+
+      const handleWaiting = () => {
+        setVideoLoading(true);
+        console.log("Video is waiting for data...");
+        audio.pause();
+      };
+
+      const handlePlaying = () => {
+        setVideoLoading(false);
+        setIsLoading(false);
+        if (formatChangeRef.current) {
+          video.currentTime = timeBackupRef.current;
+          formatChangeRef.current = false;
+        }
+        setIsPlaying(true);
+        audio.play();
+        syncAudioToVideo();
+      };
+
+      const handlePause = () => {
+        setIsPlaying(false);
+        audio.pause();
+      };
+
+      const handleSeeking = () => {
+        audio.currentTime = video.currentTime;
+        audio.pause();
+      };
+
+      const handleSeeked = () => {
+        audio.currentTime = video.currentTime;
+        if (!video.paused) {
+          audio.play();
+        }
+      };
+      const handleStall = () => {
+        console.warn("Video stalled, trying to recover...");
+      };
+
+      video.addEventListener("timeupdate", handleTimeUpdate);
+      video.addEventListener("loadedmetadata", handleLoadedMetadata);
+      video.addEventListener("waiting", handleWaiting);
+      video.addEventListener("playing", handlePlaying);
+      video.addEventListener("pause", handlePause);
+      video.addEventListener("seeking", handleSeeking);
+      video.addEventListener("seeked", handleSeeked);
+      video.addEventListener("stalled", handleStall);
+    };
+
+    if (youtubeUrl && !LoadedRef.current) {
+      LoadedRef.current = true;
+      initializePlayer();
+      console.log("Player initialized with YouTube URL:", youtubeUrl);
+      console.log("Player initialized with Thumbnail URL:", thumbnailUrl);
+    }
+
+    return handleVideoEvents();
+  }, [youtubeUrl, refetchTrigger]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
+
+  const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    console.log("Video error:", e);
+  };
 
   return (
     <div
-      ref={containerRef}
-      className="relative w-full max-w-4xl mx-auto bg-black rounded overflow-hidden cursor-pointer"
+      ref={playerRef}
+      className={`relative bg-[url(${thumbnailUrl})] rounded-lg overflow-hidden shadow-2xl  ${
+        isFullscreen ? "w-screen h-screen" : "w-full h-full"
+      }`}
+      onMouseMove={showControlsTemporary}
+      onMouseLeave={() => isPlaying && setShowControls(false)}
     >
-      {/* メインビデオエリア */}
-      <div className="relative aspect-video bg-black">
-        {videoUrl && (
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="w-full h-full object-contain"
-            muted
-          />
-        )}
+      {/* Loading Overlay */}
 
-        {audioUrl && (
-          <audio
-            ref={audioRef}
-            src={audioUrl}
-            onLoadedMetadata={() => {
-              if (audioRef.current) {
-                audioRef.current.volume = volume;
-              }
-            }}
-            muted={isMuted}
-          />
-        )}
-
-        {/* ローディングスピナー（中央小さく） */}
-        {(formatsLoading || streamsLoading || isLoading) && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      {/* Error Message */}
+      {error && (
+        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="text-red-500 text-center p-4">
+            <p className="text-lg">{error}</p>
+            <button
+              onClick={() => handleRefresh()}
+              className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+            >
+              閉じる
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* 中央再生ボタン（YouTube風） */}
-        {!isPlaying && isStreamReady && (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
+      {/* Video Element */}
+      <video
+        ref={videoRef}
+        src={streamVideoUrl}
+        className="w-full h-full object-contain"
+        muted
+        onDoubleClick={toggleFullscreen}
+        onClick={togglePlay}
+        autoPlay
+        onError={handleError}
+      />
+
+      {/* Audio Element (Hidden) */}
+      <audio ref={audioRef} src={streamAudioUrl} />
+
+      {/* Video Loading Spinner */}
+      {videoLoading && (
+        <AnimatePresence>
+          <LoadingOverlay />
+        </AnimatePresence>
+      )}
+
+      {/* Play Button Overlay */}
+      {!isPlaying && !isLoading && streamVideoUrl && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <button
             onClick={togglePlay}
+            className="bg-red-600 hover:bg-red-700 text-white rounded-full p-6 shadow-lg transition-all duration-200 transform hover:scale-110"
           >
-            <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors duration-200">
-              <Play className="w-6 h-6 text-white ml-1" fill="white" />
-            </div>
-          </div>
-        )}
+            <FaPlay className="text-3xl ml-1" />
+          </button>
+        </div>
+      )}
 
-        {/* コントロールバー */}
-        <div
-          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 transition-opacity duration-300 ${
-            showControls ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          {/* プログレスバー */}
+      {/* Controls Overlay */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/50 to-transparent transition-opacity duration-300 ${
+          showControls ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {/* Progress Bar */}
+        <div className="px-4 pb-2">
           <div
-            className="w-full h-1 bg-white/30 cursor-pointer mb-3 group"
+            className="w-full h-1 bg-gray-600 rounded-full cursor-pointer hover:h-2 transition-all duration-150"
             onClick={handleSeek}
           >
-            <div className="relative h-full">
-              <div
-                className="h-full bg-red-600 transition-all duration-150"
-                style={{ width: `${progress}%` }}
+            <div
+              className="h-full bg-red-600 rounded-full relative"
+              style={{ width: `${progressPercentage}%` }}
+            >
+              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-600 rounded-full opacity-0 hover:opacity-100 transition-opacity duration-150" />
+            </div>
+          </div>
+        </div>
+
+        {/* Control Buttons */}
+        <div className="flex items-center justify-between px-4 pb-4">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={togglePlay}
+              className="text-white hover:text-red-400 transition-colors duration-200"
+            >
+              {isPlaying ? (
+                <FaPause className="text-xl" />
+              ) : (
+                <FaPlay className="text-xl" />
+              )}
+            </button>
+
+            <div className="flex items-center space-x-2 group">
+              <button
+                onClick={toggleMute}
+                className="text-white hover:text-red-400 transition-colors duration-200"
+              >
+                {isMuted ? (
+                  <FaVolumeMute className="text-lg" />
+                ) : (
+                  <FaVolumeUp className="text-lg" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                style={{
+                  background: `linear-gradient(to right, #ef4444 0%, #ef4444 ${
+                    (isMuted ? 0 : volume) * 100
+                  }%, #4b5563 ${(isMuted ? 0 : volume) * 100}%, #4b5563 100%)`,
+                }}
               />
-              <div
-                className="absolute top-1/2 w-3 h-3 bg-red-600 rounded-full transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                style={{ left: `calc(${progress}% - 6px)` }}
-              />
+            </div>
+
+            <div className="text-white text-sm">
+              {formatTime(currentTime)} / {formatTime(duration)}
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            {/* 左側コントロール */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={togglePlay}
-                disabled={!isStreamReady}
-                className="text-white hover:text-red-400 transition-colors duration-200 disabled:opacity-50"
-              >
-                {isPlaying ? (
-                  <Pause className="w-5 h-5" />
-                ) : (
-                  <Play className="w-5 h-5" />
-                )}
-              </button>
-
-              <div className="flex items-center space-x-2 group">
-                <button
-                  onClick={toggleMute}
-                  className="text-white hover:text-red-400 transition-colors duration-200"
-                >
-                  {isMuted ? (
-                    <VolumeX className="w-4 h-4" />
-                  ) : (
-                    <Volume2 className="w-4 h-4" />
-                  )}
-                </button>
-
-                <div className="w-0 group-hover:w-16 transition-all duration-200 overflow-hidden">
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volume}
-                    onChange={(e) =>
-                      handleVolumeChange(parseFloat(e.target.value))
-                    }
-                    className="w-16 h-1 bg-white/30 appearance-none cursor-pointer slider"
-                  />
-                </div>
-              </div>
-
-              <div className="text-white text-xs font-mono">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </div>
-            </div>
-
-            {/* 右側コントロール */}
+          <div className="flex items-center space-x-4">
+            {/* Settings Button */}
             <div className="relative">
               <button
                 onClick={() => setShowSettings(!showSettings)}
                 className="text-white hover:text-red-400 transition-colors duration-200"
               >
-                <MoreVertical className="w-4 h-4" />
+                <FaCog className="text-lg" />
               </button>
 
-              {/* YouTube風設定メニュー */}
               {showSettings && (
-                <div className="absolute bottom-8 right-0 bg-gray-900 rounded-lg shadow-xl min-w-48 z-50 animate-in slide-in-from-bottom-2 duration-200">
-                  <div className="py-2">
-                    {/* 映像品質 */}
-                    <div className="px-4 py-2 text-white text-sm font-medium border-b border-gray-700">
-                      映像品質
-                    </div>
+                <div className="absolute grid grid-cols-2 bottom-8 right-0 bg-black bg-opacity-90 rounded-lg p-3 min-w-64">
+                  <div>
+                    <div className="text-white text-sm mb-2">画質</div>
                     {videoFormats.map((format) => (
                       <button
                         key={format.id}
-                        onClick={() => {
-                          setSelectedVideoFormat(format.id);
-                          loadStreams();
-                          setShowSettings(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-800 transition-colors duration-150 flex items-center justify-between"
+                        onClick={() => handleQualityChange("video", format.id)}
+                        className={`block w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-700 transition-colors duration-150 ${
+                          selectedVideoFormat === format.id
+                            ? "text-red-400"
+                            : "text-white"
+                        }`}
                       >
-                        <span>{format.quality}</span>
-                        {selectedVideoFormat === format.id && (
-                          <Check className="w-4 h-4 text-red-500" />
-                        )}
+                        {format.quality} ({format.codec})
                       </button>
                     ))}
-
-                    {/* 音声品質 */}
-                    <div className="px-4 py-2 text-white text-sm font-medium border-b border-gray-700 border-t">
-                      音声品質
-                    </div>
+                  </div>
+                  <div>
+                    <div className="text-white text-sm mb-2">音質</div>
                     {audioFormats.map((format) => (
                       <button
                         key={format.id}
-                        onClick={() => {
-                          setSelectedAudioFormat(format.id);
-                          loadStreams();
-                          setShowSettings(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-800 transition-colors duration-150 flex items-center justify-between"
+                        onClick={() => handleQualityChange("audio", format.id)}
+                        className={`block w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-700 transition-colors duration-150 ${
+                          selectedAudioFormat === format.id
+                            ? "text-red-400"
+                            : "text-white"
+                        }`}
                       >
-                        <span>{format.quality}</span>
-                        {selectedAudioFormat === format.id && (
-                          <Check className="w-4 h-4 text-red-500" />
-                        )}
+                        {format.quality} ({format.codec})
                       </button>
                     ))}
                   </div>
                 </div>
               )}
             </div>
+
+            <button
+              onClick={toggleFullscreen}
+              className="text-white hover:text-red-400 transition-colors duration-200"
+            >
+              {isFullscreen ? (
+                <FaCompress className="text-lg" />
+              ) : (
+                <FaExpand className="text-lg" />
+              )}
+            </button>
           </div>
         </div>
       </div>
-
-      {/* 設定メニュー外クリックで閉じる */}
-      {showSettings && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowSettings(false)}
-        />
-      )}
-
-      <style>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: #dc2626;
-          cursor: pointer;
-        }
-
-        .slider::-moz-range-thumb {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: #dc2626;
-          cursor: pointer;
-          border: none;
-        }
-
-        .animate-in {
-          animation: slideIn 0.2s ease-out;
-        }
-
-        .slide-in-from-bottom-2 {
-          animation: slideInFromBottom 0.2s ease-out;
-        }
-
-        @keyframes slideInFromBottom {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 };
 
-export default VideoPlayer2;
+export default NewPlayer;
