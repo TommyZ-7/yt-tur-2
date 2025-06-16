@@ -53,7 +53,6 @@ pub async fn dlp_get_channel_info(app_handle: tauri::AppHandle, channel_url: Str
     
     // jsonからentriesを抽出
     let json_value: Value = serde_json::from_str(&json).map_err(|e| format!("Failed to parse JSON: {}", e))?;
-    let entries = json_value.get("entries").and_then(|e| e.as_array()).ok_or("No entries found")?;
 
     let channel_id = json_value.get("id").and_then(|id| id.as_str()).ok_or("No channel ID found")?;
     println!("Channel ID: {}", channel_id);
@@ -301,4 +300,36 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
     });
     Ok(serde_json::to_string(&video_info_json)
         .map_err(|e| format!("Failed to serialize video info: {}", e))?)
+}
+
+#[tauri::command]
+pub async fn dlp_get_stream_url(app_handle: tauri::AppHandle, video_url: String, format_id: String) -> Result<String, String> {
+    let shell = app_handle.shell();
+
+    println!("Fetching stream URL for video: {}", video_url);
+
+    // yt-dlpで動画のストリームURLを取得
+    let output = shell
+        .sidecar("ytdlp-sidecar")
+        .unwrap()
+        .arg("-f")
+        .arg(&format_id)
+        .arg("-g")
+        .arg(&video_url)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "yt-dlp error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    let stream_url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    
+    println!("Stream URL: {}", stream_url);
+    
+    Ok(stream_url)
 }

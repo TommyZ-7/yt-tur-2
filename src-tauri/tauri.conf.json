@@ -18,7 +18,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' tauri:; media-src 'self' http://localhost:*; connect-src 'self' http://localhost:*",
+      "csp": "default-src 'self' tauri:; media-src 'self' https://*; img-src 'self' https://*; connect-src 'self' https://*",
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]

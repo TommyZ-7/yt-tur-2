@@ -5,25 +5,11 @@ import {
   FaVolumeMute,
   FaExpand,
   FaCompress,
-  FaSpinner,
   FaCog,
 } from "react-icons/fa";
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
-import { motion, AnimatePresence, backIn } from "framer-motion";
-import { ref } from "process";
-
-const customStyles = `
-  @keyframes gradient-bg {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  .animate-gradient-bg {
-    background-size: 400% 400%;
-    animation: gradient-bg 10s ease infinite;
-  }
-`;
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
  * LoadingOverlayコンポーネント
@@ -340,7 +326,7 @@ const getVideoFormats = async (youtubeUrl: string) => {
 };
 
 const getStreamingUrl = async (url: string, format: string) => {
-  const streamUrl = await invoke<string>("get_proxy_url", {
+  const streamUrl = await invoke<string>("dlp_get_stream_url", {
     videoUrl: url,
     formatId: format,
   });
@@ -379,7 +365,7 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const isDragging = false;
   const timeBackupRef = useRef<number>(0);
   const formatChangeRef = useRef<boolean>(false);
   const [refetchTrigger, setRefetchTrigger] = useState(0);

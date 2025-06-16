@@ -11,10 +11,12 @@ import {
   Eye,
   Loader,
 } from "lucide-react";
-import "../App.css"; // グローバルスタイルをインポート
+import "@/App.css"; // グローバルスタイルをインポート
 import { invoke } from "@tauri-apps/api/core";
-import NewPlayer from "../components/new_player";
-import { formatNumberWithSlashes } from "../lib/lib";
+import NewPlayer from "@/components/new_player";
+import { Skeleton } from "@/components/ui/skeleton"; // パスはプロジェクト構成に合わせてください
+
+import { formatNumberWithSlashes } from "@/lib/lib";
 
 // --- 型定義 (TypeScript) ---
 interface Channel {
@@ -308,9 +310,11 @@ const ChannelPage: FC<DetailPageProps> = ({
     () => channels.find((c) => c.id === id),
     [id, channels]
   );
+  const [videoLoading, setVideoLoading] = useState<boolean>(false);
   if (!channel) return <div>Channel not found</div>;
   // チャンネルの動画をさらに読み込むハンドル
   const handleLoadMoreVideos = async () => {
+    setVideoLoading(true);
     const fetchChannelTopVideoUrl = async (
       channelID: string,
       offset: number
@@ -340,6 +344,7 @@ const ChannelPage: FC<DetailPageProps> = ({
       });
     }
     handleUpdateChannelList(returnVideos);
+    setVideoLoading(false);
   };
   return (
     <motion.div
@@ -411,17 +416,30 @@ const ChannelPage: FC<DetailPageProps> = ({
           {channel.videos?.map((video) => (
             <VideoCard key={video.id} video={video} navigate={navigate} />
           ))}
-          <div className="col-span-full">
+          {videoLoading && (
+            <div className="col-span-full text-center  relative">
+              <Skeleton className="h-12 w-full opacity-50" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader size={24} className="text-red-500 animate-spin" />
+              </div>
+            </div>
+          )}
+          {!videoLoading && (
             <button
-              className="w-full"
+              className="col-span-full"
               onClick={() => {
                 handleLoadMoreVideos();
+
                 console.log("Load more videos clicked");
               }}
             >
-              さらに読み込む
+              <div className="flex items-center justify-center h-12 bg-neutral-800/50 rounded-lg cursor-pointer hover:bg-neutral-700 transition-colors">
+                <span className="text-white font-semibold">
+                  さらに動画を読み込む
+                </span>
+              </div>
             </button>
-          </div>
+          )}
         </motion.div>
       </div>
     </motion.div>
@@ -556,7 +574,7 @@ export default function App() {
   const [page, setPage] = useState<PageState>({ name: "home", id: null });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [channelList, setChannelList] = useState<Channel[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const isLoading = false;
   const hasRun = useRef(false);
 
   const debugChannelList = ["@hinanotachiba7", "@bokuwata_ch"]; // デバッグ用のチャンネルリスト
