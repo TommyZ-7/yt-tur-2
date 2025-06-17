@@ -17,6 +17,7 @@ import NewPlayer from "@/components/new_player";
 import { Skeleton } from "@/components/ui/skeleton"; // パスはプロジェクト構成に合わせてください
 
 import { formatNumberWithSlashes } from "@/lib/lib";
+import { useAppSettings } from "@/lib/hooks/useSettings";
 
 // --- 型定義 (TypeScript) ---
 interface Channel {
@@ -27,6 +28,7 @@ interface Channel {
   banner: string;
   description: string;
   subscribers: string;
+  fetchCount?: number; // 動画数の取得に使用
   videos?: Video[];
 }
 
@@ -40,7 +42,15 @@ interface Video {
 }
 
 interface PageState {
-  name: "home" | "channel" | "video";
+  name:
+    | "home"
+    | "channel"
+    | "video"
+    | "channelList"
+    | "playlist"
+    | "history"
+    | "player";
+
   id: string | null; // チャンネルIDまたは動画ID
 }
 
@@ -90,12 +100,22 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, setIsOpen, navigate }) => {
     {
       icon: Youtube,
       label: "登録チャンネル",
-      page: { name: "home", id: null } as PageState,
+      page: { name: "channelList", id: null } as PageState,
     },
     {
       icon: ListVideo,
       label: "マイリスト",
-      page: { name: "home", id: null } as PageState,
+      page: { name: "playlist", id: null } as PageState,
+    },
+    {
+      icon: Users,
+      label: "視聴履歴",
+      page: { name: "history", id: null } as PageState,
+    },
+    {
+      icon: Menu,
+      label: "プレイヤー",
+      page: { name: "player", id: null } as PageState,
     },
   ];
   return (
@@ -298,7 +318,7 @@ const HomePage: FC<PageProps> = ({ navigate, channels }) => (
 
 interface DetailPageProps extends PageProps {
   id: string;
-  handleUpdateChannelList: (newVideos: Video[]) => void;
+  handleUpdateChannelList: (newVideos: Video[], fetchCount: number) => void;
 }
 const ChannelPage: FC<DetailPageProps> = ({
   id,
@@ -327,7 +347,7 @@ const ChannelPage: FC<DetailPageProps> = ({
     };
     const newVideos = await fetchChannelTopVideoUrl(
       channel.atId,
-      channel.videos?.length || 0
+      channel.fetchCount || 0
     );
     console.log("Fetched new videos:", newVideos);
     const parsedVideos = JSON.parse(newVideos);
@@ -343,7 +363,7 @@ const ChannelPage: FC<DetailPageProps> = ({
         date: video.date,
       });
     }
-    handleUpdateChannelList(returnVideos);
+    handleUpdateChannelList(returnVideos, (channel.fetchCount || 8) + 6);
     setVideoLoading(false);
   };
   return (
@@ -570,6 +590,89 @@ const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
   );
 };
 
+interface SubscriptionChannelItemProps {
+  channel: Channel;
+  navigate: NavigateFunction;
+}
+const SubscriptionChannelItem: FC<SubscriptionChannelItemProps> = ({
+  channel,
+  navigate,
+}) => {
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="relative aspect-video rounded-xl overflow-hidden cursor-pointer group shadow-lg"
+      onClick={() => navigate({ name: "channel", id: channel.id })}
+    >
+      <motion.img
+        src={channel.banner}
+        alt={`${channel.name} banner`}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+      />
+      <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-colors duration-300"></div>
+      <div className="relative h-full flex flex-col items-center justify-center p-4">
+        <motion.img
+          layoutId={`channel-icon-${channel.id}`}
+          src={channel.icon}
+          alt={`${channel.name} icon`}
+          layout="position"
+          initial={false}
+          transition={{
+            duration: isInitialLoad ? 0 : 0.3,
+            ease: "easeInOut",
+          }}
+          className="w-16 h-16 rounded-full border-2 border-white/50 shadow-xl transition-transform duration-300 group-hover:scale-110"
+        />
+        <h3 className="mt-3 text-white font-bold text-lg text-center drop-shadow-md">
+          {channel.name}
+        </h3>
+      </div>
+    </motion.div>
+  );
+};
+
+const SubscriptionsPage: FC<PageProps> = ({ navigate, channels }) => (
+  <motion.div
+    key="subscriptions"
+    variants={pageVariants}
+    initial="initial"
+    animate="in"
+    exit="out"
+    transition={pageTransition}
+  >
+    <h1 className="text-4xl font-bold text-white mb-8">登録チャンネル</h1>
+    <motion.div
+      className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+      variants={listVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {channels.length > 0 ? (
+        channels.map((channel) => (
+          <SubscriptionChannelItem
+            key={channel.id}
+            channel={channel}
+            navigate={navigate}
+          />
+        ))
+      ) : (
+        <p className="text-neutral-400 col-span-full">
+          登録チャンネルはありません。
+        </p>
+      )}
+    </motion.div>
+  </motion.div>
+);
+
 export default function App() {
   const [page, setPage] = useState<PageState>({ name: "home", id: null });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -599,6 +702,7 @@ export default function App() {
         banner: parsedResult.thumbnail,
         description: parsedResult.channel_description,
         subscribers: parsedResult.channel_followers,
+        fetchCount: 8, // 動画数の取得に使用
         videos: [],
       };
       // 最新動画を取得してチャンネルに追加
@@ -676,13 +780,14 @@ export default function App() {
   };
 
   // channelPageで動画をさらに読み込み追加するハンドル
-  const handleUpdateChannelList = (newVideos: Video[]) => {
+  const handleUpdateChannelList = (newVideos: Video[], fetchCount: number) => {
     setChannelList((prevChannels) =>
       prevChannels.map((channel) => {
         if (channel.id === page.id) {
           return {
             ...channel,
             videos: [...(channel.videos || []), ...newVideos],
+            fetchCount: fetchCount,
           };
         }
         return channel;
@@ -703,7 +808,6 @@ export default function App() {
         </div>
       );
     }
-
     switch (page.name) {
       case "channel":
         return (
@@ -723,6 +827,29 @@ export default function App() {
             handleUpdateChannelList={handleUpdateChannelList}
           />
         );
+      case "channelList":
+        return <SubscriptionsPage navigate={navigate} channels={channelList} />;
+      case "playlist":
+        return (
+          <div className="text-center text-white">
+            <h2 className="text-2xl font-bold mb-4">マイリスト</h2>
+            <p>この機能はまだ実装されていません。</p>
+          </div>
+        );
+      case "history":
+        return (
+          <div className="text-center text-white">
+            <h2 className="text-2xl font-bold mb-4">視聴履歴</h2>
+            <p>この機能はまだ実装されていません。</p>
+          </div>
+        );
+      case "player":
+        return (
+          <div className="text-center text-white">
+            <h2 className="text-2xl font-bold mb-4">動画プレイヤー</h2>
+            <p>この機能はまだ実装されていません。</p>
+          </div>
+        );
       case "home":
       default:
         return <HomePage navigate={navigate} channels={channelList} />;
@@ -730,7 +857,7 @@ export default function App() {
   };
 
   return (
-    <div className="bg-neutral-900 min-h-screen font-sans text-white">
+    <div className="bg-neutral-900 min-h-screen font-sans text-white overflow-hidden">
       <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}

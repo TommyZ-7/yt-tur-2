@@ -2,6 +2,8 @@
 use serde::{ Serialize};
 use tauri::{ AppHandle};
 use tauri_plugin_shell::ShellExt;
+use tauri_plugin_store::StoreBuilder;
+
 
 mod dlp; // Import the module for channel information
 
@@ -150,6 +152,7 @@ async fn download_video(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             get_video_info,
             download_video,

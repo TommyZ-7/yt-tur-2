@@ -121,7 +121,9 @@ pub async fn dlp_get_channel_newvideo(app_handle: tauri::AppHandle, channel_url:
         .unwrap()
         .arg("--no-warnings")
         .arg("--playlist-items")
-        .arg("1-3")
+        .arg("1-8")
+        .arg("--match-filter")
+        .arg("!is_live & !was_live & availability = 'public'")
         .arg("--print")
         .arg("%(webpage_url)s")
         .arg("--print")
@@ -188,6 +190,7 @@ pub async fn dlp_get_channel_morevideo(app_handle: tauri::AppHandle, channel_url
         let shell = app_handle.shell();
 
     println!("Fetching channel info for URL: {}", channel_url);
+    println!("Offset: {}", offset);
 
     // yt-dlpでチャンネル情報をJSON形式で取得
     let output = shell
@@ -196,6 +199,7 @@ pub async fn dlp_get_channel_morevideo(app_handle: tauri::AppHandle, channel_url
         .arg("--no-warnings")
         .arg("--playlist-items")
         .arg(format!("{}-{}", offset + 1, offset + 6)) // オフセットを考慮して取得
+        .arg("!is_live & !was_live & availability = 'public'")
         .arg("--print")
         .arg("%(webpage_url)s")
         .arg("--print")
