@@ -673,6 +673,130 @@ const SubscriptionsPage: FC<PageProps> = ({ navigate, channels }) => (
   </motion.div>
 );
 
+interface UrlPlayerProps {
+  name?: string;
+  title?: string;
+  icon?: string;
+  views?: string;
+  date?: string;
+  likes?: string;
+  subscribers?: string;
+  channelUrl?: string;
+}
+
+const UrlPlayer = () => {
+  const [url, setUrl] = useState<string>("");
+  const [videoLoaded, setVideoLoaded] = useState<boolean>(false);
+  const [videoInfo, setVideoInfo] = useState<UrlPlayerProps | null>(null);
+
+  const handlePlay = () => {
+    if (!url) return;
+    setVideoLoaded(true);
+    const fetchVideoInfo = async (videoUrl: string) => {
+      try {
+        const result = await invoke<string>("dlp_get_video_info", {
+          videoUrl: videoUrl,
+        });
+        const parsedResult = JSON.parse(result);
+        console.log("Fetched video info:", parsedResult);
+        setVideoInfo({
+          title: parsedResult.title,
+          views: parsedResult.view_count,
+          date: parsedResult.upload_date,
+          likes: parsedResult.like_count,
+          subscribers: parsedResult.follower,
+          channelUrl: parsedResult.channel_url,
+        });
+        const channelInfo = await invoke<string>("dlp_get_channel_info", {
+          channelUrl: parsedResult.channel_url,
+        });
+
+        const parsedChannelInfo = JSON.parse(channelInfo);
+        console.log("Fetched channel info:", parsedChannelInfo);
+        setVideoInfo((prev) => ({
+          ...prev,
+          name: parsedChannelInfo.channel_name,
+          icon: parsedChannelInfo.thumbnail_last,
+        }));
+      } catch (error) {
+        console.error("Error fetching video info:", error);
+      }
+    };
+    fetchVideoInfo(url);
+  };
+
+  return (
+    <div className="container mx-auto">
+      <h2 className="text-2xl font-bold text-white mb-4">URLから動画を再生</h2>
+      <input
+        type="text"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="動画のURLを入力"
+        className="w-full p-3 rounded-lg bg-neutral-800 text-white border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+      />
+      <button
+        onClick={handlePlay}
+        className="mt-4 px-6 py-3 bg-red-500 hover:bg-red-600 rounded-lg text-white font-semibold transition-colors"
+      >
+        再生
+      </button>
+      {videoLoaded && (
+        <div className="mt-6">
+          <NewPlayer youtubeUrl={url} thumbnailUrl="" />
+          <motion.h1
+            className="text-3xl font-bold text-white mt-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            {videoInfo?.title}
+          </motion.h1>
+          <motion.div
+            className="flex items-center justify-between text-neutral-400 mt-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <Eye size={16} />
+                <span>{videoInfo?.views}回視聴</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar size={16} />
+                <span>
+                  {formatNumberWithSlashes(videoInfo?.date || "00000000")}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            className="flex items-center gap-4 mt-6 py-4 border-y border-neutral-700"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <img
+              src={videoInfo?.icon}
+              alt={videoInfo?.name}
+              className="w-12 h-12 rounded-full cursor-pointer"
+            />
+            <div>
+              <h3 className="font-bold text-white text-lg cursor-pointer hover:text-red-400 transition-colors">
+                {videoInfo?.name}
+              </h3>
+              <p className="text-sm text-neutral-400">
+                {videoInfo?.subscribers}
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   const [page, setPage] = useState<PageState>({ name: "home", id: null });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -844,12 +968,7 @@ export default function App() {
           </div>
         );
       case "player":
-        return (
-          <div className="text-center text-white">
-            <h2 className="text-2xl font-bold mb-4">動画プレイヤー</h2>
-            <p>この機能はまだ実装されていません。</p>
-          </div>
-        );
+        return <UrlPlayer />;
       case "home":
       default:
         return <HomePage navigate={navigate} channels={channelList} />;
