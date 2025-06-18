@@ -1,7 +1,7 @@
 // src/hooks/useSettings.ts
 import { useState, useEffect } from "react";
 import { Store } from "@tauri-apps/plugin-store";
-import { AppSettings, defaultAppSettings } from "@/lib/hooks/settingsInterface";
+import { AppSettings, defaultAppSettings } from "@/types";
 
 const STORE_FILE = "app-settings.json";
 
