@@ -1,7 +1,11 @@
-import React, { FC } from "react";
+import { FC } from "react";
 import { motion, Transition } from "framer-motion";
 import { PageProps } from "@/types";
-import { pageVariants, pageTransition, listVariants } from "@/config/animations";
+import {
+  pageVariants,
+  pageTransition,
+  listVariants,
+} from "@/config/animations";
 import { ChannelCard } from "@/components/cards/ChannelCard";
 
 export const HomePage: FC<PageProps> = ({ navigate, channels }) => (

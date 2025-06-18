@@ -1,7 +1,7 @@
-import React, { FC, useMemo, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Loader } from "lucide-react";
-import { DetailPageProps, Video, NavigateFunction } from "@/types";
+import { DetailPageProps } from "@/types";
 import {
   pageVariants,
   pageTransition,

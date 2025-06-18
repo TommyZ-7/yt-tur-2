@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import { FC } from "react";
 import { motion } from "framer-motion";
 import { PlayCircle, Eye, Calendar } from "lucide-react";
 import { Video, NavigateFunction } from "@/types";

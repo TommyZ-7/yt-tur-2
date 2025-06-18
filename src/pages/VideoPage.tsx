@@ -1,6 +1,6 @@
-import React, { FC, useMemo } from "react";
+import { FC, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Eye, Calendar, Users } from "lucide-react";
+import { Eye, Calendar } from "lucide-react";
 import { DetailPageProps } from "@/types";
 import { pageVariants, pageTransition } from "@/config/animations";
 import { formatNumberWithSlashes } from "@/lib/utils";

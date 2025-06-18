@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, Calendar } from "lucide-react";
 import { UrlPlayerProps } from "@/types";

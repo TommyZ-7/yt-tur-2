@@ -1,7 +1,12 @@
-import React, { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Channel, NavigateFunction, PageProps } from "@/types";
-import { pageVariants, pageTransition, listVariants, itemVariants } from "@/config/animations";
+import {
+  pageVariants,
+  pageTransition,
+  listVariants,
+  itemVariants,
+} from "@/config/animations";
 
 interface SubscriptionChannelItemProps {
   channel: Channel;
