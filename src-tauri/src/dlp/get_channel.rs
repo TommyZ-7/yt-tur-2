@@ -4,23 +4,7 @@ use tauri_plugin_shell::ShellExt;
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use encoding_rs::SHIFT_JIS;
-use std::{str, string};
-
-#[derive(Deserialize, Debug)]
-struct VideoInfo {
-    // 動画ID
-    id: String,
-    // 動画タイトル
-    title: String,
-    // サムネイル画像のURL
-    thumbnail: String,
-    // 再生回数
-    view_count: u64,
-    // アップロード日 (YYYYMMDD形式の文字列)
-    upload_date: String,
-}
-
-
+use std::{str};
 
 
 #[tauri::command]
@@ -263,19 +247,11 @@ pub async fn dlp_get_channel_morevideo(app_handle: tauri::AppHandle, channel_url
 
 #[derive(Deserialize, Debug)]
 struct UrlVideoInfo {
-
-    // 動画タイトル
     title: String,
-
-    // 再生回数
     view_count: String,
-    // アップロード日 (YYYYMMDD形式の文字列)
     upload_date: String,
-    // いいね数
     like_count: String,
-    // チャンネルURL
     channel_url: String,
-
     channel_follower_count: String,
 }
 

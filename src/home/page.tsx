@@ -17,7 +17,7 @@ import NewPlayer from "@/components/new_player";
 import { Skeleton } from "@/components/ui/skeleton"; // パスはプロジェクト構成に合わせてください
 
 import { formatNumberWithSlashes } from "@/lib/lib";
-import { useAppSettings } from "@/lib/hooks/useSettings";
+//import { useAppSettings } from "@/lib/hooks/useSettings";
 
 // --- 型定義 (TypeScript) ---
 interface Channel {
