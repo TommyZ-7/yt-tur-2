@@ -1,6 +1,6 @@
 // src/hooks/useSettings.ts
 import { useState, useEffect } from "react";
-import { Store } from "@tauri-apps/plugin-store";
+import { LazyStore } from "@tauri-apps/plugin-store";
 import { AppSettings, defaultAppSettings } from "@/types";
 
 const STORE_FILE = "app-settings.json";
@@ -9,16 +9,15 @@ export const useAppSettings = () => {
   const [appSettings, setAppSettings] =
     useState<AppSettings>(defaultAppSettings);
   const [isLoading, setIsLoading] = useState(true);
-  const [store, setStore] = useState<Store | null>(null);
+  const store = new LazyStore(STORE_FILE);
 
   // ストアの初期化と設定読み込み
   useEffect(() => {
     const initStore = async () => {
       try {
-        const storeInstance = await Store.load(STORE_FILE);
-        setStore(storeInstance);
+        await store.init();
 
-        const savedSettings = await loadAllSettings(storeInstance);
+        const savedSettings = await loadAllSettings(store);
         setAppSettings(savedSettings);
       } catch (error) {
         console.error("Failed to initialize store:", error);
@@ -32,7 +31,7 @@ export const useAppSettings = () => {
 
   // 全設定の読み込み
   const loadAllSettings = async (
-    storeInstance: Store
+    storeInstance: LazyStore
   ): Promise<AppSettings> => {
     try {
       const settings =
@@ -239,36 +238,73 @@ export const useAppSettings = () => {
 
   // 履歴の追加
   const addHistory = async (
-    historyId: string,
-    historyData: AppSettings["history"][string]
+    historyData: Omit<AppSettings["history"][0], "timestamp">
   ) => {
     if (!store) return;
 
     try {
-      const updatedHistory = {
-        ...appSettings.history,
-        [historyId]: historyData,
+      const newHistoryEntry = {
+        ...historyData,
+        timestamp: Date.now(),
       };
 
-      await store.set("history", updatedHistory);
-      await store.save();
+      // 新しい履歴を先頭に追加
 
-      setAppSettings((prev) => ({
-        ...prev,
-        history: updatedHistory,
-      }));
+      // setAppSettingsを使ってstateを更新し、その最新の値を使用
+      setAppSettings((prev) => {
+        try {
+          const editedHistory = [];
+
+          for (const entry of prev.history) {
+            // タイトルが同じものは履歴から除外
+            if (entry.title !== newHistoryEntry.title) {
+              editedHistory.push(entry);
+            }
+          }
+          console.log("Edited history:", editedHistory);
+          const updatedHistory = [newHistoryEntry, ...editedHistory];
+          console.log("Updated history:", updatedHistory);
+          // storeの更新は非同期で実行
+          (async () => {
+            try {
+              await store.set("history", updatedHistory);
+              await store.save();
+            } catch (error) {
+              console.error("Failed to save history:", error);
+            }
+          })();
+
+          return {
+            ...prev,
+            history: updatedHistory,
+          };
+        } catch (error) {
+          const updatedHistory = [newHistoryEntry];
+          (async () => {
+            try {
+              await store.set("history", updatedHistory);
+              await store.save();
+            } catch (error) {
+              console.error("Failed to save history:", error);
+            }
+          })();
+          return {
+            ...prev,
+            history: updatedHistory,
+          };
+        }
+      });
     } catch (error) {
       console.error("Failed to add history:", error);
     }
   };
 
-  // 履歴の削除
-  const removeHistory = async (historyId: string) => {
-    if (!store) return;
+  // 履歴の削除（インデックスベース）
+  const removeHistory = async (index: number) => {
+    if (!store || index < 0 || index >= appSettings.history.length) return;
 
     try {
-      const updatedHistory = { ...appSettings.history };
-      delete updatedHistory[historyId];
+      const updatedHistory = appSettings.history.filter((_, i) => i !== index);
 
       await store.set("history", updatedHistory);
       await store.save();
@@ -287,12 +323,12 @@ export const useAppSettings = () => {
     if (!store) return;
 
     try {
-      await store.set("history", {});
+      await store.set("history", []);
       await store.save();
 
       setAppSettings((prev) => ({
         ...prev,
-        history: {},
+        history: [],
       }));
     } catch (error) {
       console.error("Failed to clear history:", error);

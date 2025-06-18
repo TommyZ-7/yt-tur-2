@@ -2,7 +2,6 @@
 use serde::{ Serialize};
 use tauri::{ AppHandle};
 use tauri_plugin_shell::ShellExt;
-use tauri_plugin_store::StoreBuilder;
 
 
 mod dlp; // Import the module for channel information
@@ -49,6 +48,8 @@ async fn get_video_info(
     let output = shell
         .sidecar("ytdlp-sidecar")
         .unwrap()
+        .arg("--cookies-from-browser")
+        .arg("firefox")
         .args(["--dump-json", "--no-download", &video_url])
         .output()
         .await
@@ -129,6 +130,8 @@ async fn download_video(
     let output = shell
         .sidecar("ytdlp-sidecar")
         .unwrap()
+        .arg("--cookies-from-browser")
+        .arg("firefox")
         .args(args)
         .output()
         .await

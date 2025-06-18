@@ -9,6 +9,7 @@ import { ChannelPage } from "@/pages/ChannelPage";
 import { VideoPage } from "@/pages/VideoPage";
 import { SubscriptionsPage } from "@/pages/SubscriptionsPage";
 import { UrlPlayerPage } from "@/pages/UrlPlayerPage";
+import { HistoryPage } from "@/pages/HistoryPage";
 import { useChannels } from "@/hooks/useChannels";
 
 export default function App() {
@@ -71,14 +72,9 @@ export default function App() {
           </div>
         );
       case "history":
-        return (
-          <div className="text-center text-white">
-            <h2 className="text-2xl font-bold mb-4">視聴履歴</h2>
-            <p>この機能はまだ実装されていません。</p>
-          </div>
-        );
+        return <HistoryPage navigate={navigate} />;
       case "player":
-        return <UrlPlayerPage />;
+        return <UrlPlayerPage directUrl={page.id || ""} />;
       case "home":
       default:
         return <HomePage navigate={navigate} channels={channelList} />;

@@ -10,6 +10,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAppSettings } from "@/hooks/useSettings";
 
 /**
  * LoadingOverlayコンポーネント
@@ -340,9 +341,20 @@ const formatTime = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
-const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
+interface NewPlayerProps {
+  youtubeUrl: string;
+  thumbnailUrl: string;
+  videoTitle?: string;
+  channelName?: string;
+  channelId?: string;
+}
+
+const NewPlayer: FC<NewPlayerProps> = ({
   youtubeUrl,
   thumbnailUrl,
+  videoTitle,
+  channelName,
+  channelId,
 }) => {
   const [selectedVideoFormat, setSelectedVideoFormat] = useState<string | null>(
     null
@@ -376,6 +388,9 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
   const LoadedRef = useRef(false);
   const refreshRefTimeBackUp = useRef<number>(0);
+
+  const { addHistory } = useAppSettings();
+  const historyRecordedRef = useRef(false);
 
   const hideControlsTimeout = () => {
     if (controlsTimeoutRef.current) {
@@ -533,6 +548,52 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
     console.log("Player state reset for refetch.");
   };
 
+  const recordToHistory = async () => {
+    if (
+      historyRecordedRef.current ||
+      !videoTitle ||
+      !channelName ||
+      !channelId
+    ) {
+      return;
+    }
+
+    try {
+      // 動画IDをURLから抽出
+      const videoId = extractVideoIdFromUrl(youtubeUrl);
+      if (!videoId) return;
+
+      const historyData = {
+        title: videoTitle,
+        url: youtubeUrl,
+        atId: channelId,
+        channelName: channelName,
+        timestamp: Date.now(),
+      };
+
+      await addHistory(historyData);
+      historyRecordedRef.current = true;
+      console.log("Video added to history:", historyData);
+    } catch (error) {
+      console.error("Failed to record history:", error);
+    }
+  };
+
+  const extractVideoIdFromUrl = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        return match[1];
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
     const initializePlayer = async () => {
       if (!youtubeUrl) {
@@ -636,17 +697,22 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
       const handlePlaying = () => {
         if (refreshRefTimeBackUp.current !== 0) {
           video.currentTime = refreshRefTimeBackUp.current;
+          audio.currentTime = refreshRefTimeBackUp.current;
           refreshRefTimeBackUp.current = 0;
         }
         setVideoLoading(false);
         setIsLoading(false);
         if (formatChangeRef.current) {
           video.currentTime = timeBackupRef.current;
+          audio.currentTime = timeBackupRef.current;
           formatChangeRef.current = false;
         }
         setIsPlaying(true);
         audio.play();
         syncAudioToVideo();
+
+        // 再生開始時に履歴に記録
+        recordToHistory();
       };
 
       const handlePause = () => {
@@ -687,7 +753,7 @@ const NewPlayer: FC<{ youtubeUrl: string; thumbnailUrl: string }> = ({
     }
 
     return handleVideoEvents();
-  }, [youtubeUrl, refetchTrigger]);
+  }, [youtubeUrl, refetchTrigger, videoTitle, channelName, channelId]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {

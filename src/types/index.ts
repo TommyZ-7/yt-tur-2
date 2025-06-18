@@ -53,6 +53,7 @@ export interface UrlPlayerProps {
   likes?: string;
   subscribers?: string;
   channelUrl?: string;
+  channelId?: string; // 追加
 }
 
 export interface AppSettings {
@@ -83,14 +84,12 @@ export interface AppSettings {
     };
   };
   history: {
-    [key: string]: {
-      title: string;
-      url: string;
-      atId: string;
-      channelName: string;
-      timestamp: number;
-    };
-  };
+    title: string;
+    url: string;
+    atId: string;
+    channelName: string;
+    timestamp: number;
+  }[];
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -101,5 +100,5 @@ export const defaultAppSettings: AppSettings = {
   },
   followChannel: {},
   playlist: {},
-  history: {},
+  history: [],
 };

@@ -37,6 +37,9 @@ export const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
           <NewPlayer
             youtubeUrl={video.url}
             thumbnailUrl={video.thumbnail || ""}
+            videoTitle={video.title}
+            channelName={channel.name}
+            channelId={channel.atId}
           />
         </motion.div>
         <motion.h1

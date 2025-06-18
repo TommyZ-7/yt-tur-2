@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { FC, useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, Calendar } from "lucide-react";
 import { UrlPlayerProps } from "@/types";
@@ -6,8 +6,8 @@ import { formatNumberWithSlashes } from "@/lib/utils";
 import { apiService } from "@/services/api";
 import NewPlayer from "@/components/new_player";
 
-export const UrlPlayerPage = () => {
-  const [url, setUrl] = useState<string>("");
+export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
+  const [url, setUrl] = useState<string>(directUrl || "");
   const [videoLoaded, setVideoLoaded] = useState<boolean>(false);
   const [videoInfo, setVideoInfo] = useState<UrlPlayerProps | null>(null);
 
@@ -26,17 +26,38 @@ export const UrlPlayerPage = () => {
         channelUrl: parsedResult.channel_url,
       });
 
-      const channelInfo = await apiService.getChannelInfo(
-        parsedResult.channel_url
-      );
-      setVideoInfo((prev) => ({
-        ...prev,
-        name: channelInfo.name,
-        icon: channelInfo.icon,
-      }));
+      // チャンネル情報を取得（チャンネルURLから@IDを抽出）
+      const channelId = extractChannelIdFromUrl(parsedResult.channel_url);
+      if (channelId) {
+        const channelInfo = await apiService.getChannelInfo(channelId);
+        setVideoInfo((prev) => ({
+          ...prev,
+          name: channelInfo.name,
+          icon: channelInfo.icon,
+          channelId: channelInfo.atId,
+        }));
+      }
     } catch (error) {
       console.error("Error fetching video info:", error);
     }
+  };
+
+  const extractChannelIdFromUrl = (channelUrl: string): string | null => {
+    // YouTube チャンネルURLから@IDまたはチャンネルIDを抽出
+    const patterns = [
+      /youtube\.com\/@([^/?]+)/,
+      /youtube\.com\/channel\/([^/?]+)/,
+      /youtube\.com\/c\/([^/?]+)/,
+      /youtube\.com\/user\/([^/?]+)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = channelUrl.match(pattern);
+      if (match) {
+        return match[0].includes("/@") ? `@${match[1]}` : match[1];
+      }
+    }
+    return null;
   };
 
   return (
@@ -57,7 +78,13 @@ export const UrlPlayerPage = () => {
       </button>
       {videoLoaded && (
         <div className="mt-6">
-          <NewPlayer youtubeUrl={url} thumbnailUrl="" />
+          <NewPlayer
+            youtubeUrl={url}
+            thumbnailUrl=""
+            videoTitle={videoInfo?.title}
+            channelName={videoInfo?.name}
+            channelId={videoInfo?.channelId}
+          />
           <motion.h1
             className="text-3xl font-bold text-white mt-6"
             initial={{ opacity: 0, y: 20 }}
