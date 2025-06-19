@@ -264,6 +264,7 @@ export const useAppSettings = () => {
         ...historyData,
         timestamp: Date.now(),
       };
+      console.log("Current app settings:", appSettings);
 
       // 新しい履歴を先頭に追加
 

@@ -11,7 +11,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppSettings } from "@/hooks/useSettings";
-import { a } from "node_modules/framer-motion/dist/types.d-B_QPEvFK";
 
 /**
  * LoadingOverlayコンポーネント
@@ -391,6 +390,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
   const refreshRefTimeBackUp = useRef<number>(0);
 
   const { addHistory, editVolume, appSettings } = useAppSettings();
+
   const historyRecordedRef = useRef(false);
 
   const hideControlsTimeout = () => {
@@ -669,7 +669,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
           videoStreamUrl,
           audioStreamUrl,
         });
-        console.log("Video formats:", appSettings.settings.volume);
+        console.log("Volume:", appSettings.settings.volume);
       } catch (err) {
         console.error("エラーが発生:", err);
         setError(`エラー: ${err instanceof Error ? err.message : String(err)}`);
