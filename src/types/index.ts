@@ -53,7 +53,6 @@ export interface UrlPlayerProps {
   likes?: string;
   subscribers?: string;
   channelUrl?: string;
-  channelId?: string; // 追加
 }
 
 export interface AppSettings {

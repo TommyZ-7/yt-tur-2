@@ -261,7 +261,6 @@ struct UrlVideoInfo {
     like_count: String,
     channel_url: String,
     channel_follower_count: String,
-    channel_handler: String,
 }
 
 
@@ -290,8 +289,6 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
         .arg("%(upload_date)s")
         .arg("--print")
         .arg("%(channel_follower_count)s")
-        .arg("--print")
-        .arg("%(channel)s")
         .arg(&video_url)
         .output()
         .await
@@ -305,7 +302,7 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
     let mut current_chunk = Vec::new();
     for item in records_bytes {
         current_chunk.push(item);
-        if current_chunk.len() == 7 {
+        if current_chunk.len() == 6 {
             chunked_records.push(current_chunk.clone());
             current_chunk.clear();
         }
@@ -321,7 +318,6 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
             channel_url: SHIFT_JIS.decode(record[3]).0.into_owned(),
             upload_date: SHIFT_JIS.decode(record[4]).0.into_owned(),
             channel_follower_count: SHIFT_JIS.decode(record[5]).0.into_owned(),
-            channel_handler: SHIFT_JIS.decode(record[6]).0.into_owned(),
         };
 
     // 動画情報をJSON形式で返す
@@ -332,7 +328,6 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
         "upload_date": video_info.upload_date,
         "channel_url": video_info.channel_url,
         "followers": video_info.channel_follower_count,
-        "channel_handler": video_info.channel_handler,
     });
 
     println!("Video Info: {:#?}", video_info_json);

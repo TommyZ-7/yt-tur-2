@@ -8,14 +8,14 @@ import {
   listVariants,
   itemVariants,
 } from "@/config/animations";
-import { useAppSettings } from "@/hooks/useSettings";
+import { useSettings } from "@/contexts/SettingsContext";
 
 interface HistoryPageProps {
   navigate: NavigateFunction;
 }
 
 export const HistoryPage: FC<HistoryPageProps> = ({ navigate }) => {
-  const { appSettings, removeHistory, clearHistory } = useAppSettings();
+  const { appSettings, removeHistory, clearHistory } = useSettings();
 
   const historyEntries = Object.entries(appSettings.history).sort(
     (a, b) => b[1].timestamp - a[1].timestamp

@@ -10,7 +10,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAppSettings } from "@/hooks/useSettings";
+import { useSettings } from "@/contexts/SettingsContext";
 
 /**
  * LoadingOverlayコンポーネント
@@ -389,7 +389,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
   const LoadedRef = useRef(false);
   const refreshRefTimeBackUp = useRef<number>(0);
 
-  const { addHistory, editVolume, appSettings } = useAppSettings();
+  const { addHistory, editVolume, appSettings } = useSettings();
 
   const historyRecordedRef = useRef(false);
 
@@ -670,6 +670,12 @@ const NewPlayer: FC<NewPlayerProps> = ({
           audioStreamUrl,
         });
         console.log("Volume:", appSettings.settings.volume);
+        setVolume(appSettings.settings.volume);
+        setIsMuted(appSettings.settings.volume === 0);
+        const audio = audioRef.current;
+        if (audio) {
+          audio.volume = appSettings.settings.volume;
+        }
       } catch (err) {
         console.error("エラーが発生:", err);
         setError(`エラー: ${err instanceof Error ? err.message : String(err)}`);
