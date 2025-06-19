@@ -7,7 +7,8 @@ export const apiService = {
       channelUrl: "https://www.youtube.com/" + channelId,
     });
     const parsedResult = JSON.parse(result);
-    
+    console.log("Parsed Channel Info:", parsedResult);
+
     return {
       id: parsedResult.channel_id,
       atId: channelId,
@@ -26,7 +27,7 @@ export const apiService = {
       channelUrl: "https://www.youtube.com/" + channelId + "/videos",
     });
     const parsedResult = JSON.parse(result);
-    
+
     return parsedResult.map((video: any) => ({
       id: video.video_id,
       url: video.youtube_url,
@@ -37,13 +38,16 @@ export const apiService = {
     }));
   },
 
-  async getChannelMoreVideos(channelId: string, offset: number): Promise<Video[]> {
+  async getChannelMoreVideos(
+    channelId: string,
+    offset: number
+  ): Promise<Video[]> {
     const result = await invoke<string>("dlp_get_channel_morevideo", {
       channelUrl: "https://www.youtube.com/" + channelId + "/videos",
       offset: offset,
     });
     const parsedResult = JSON.parse(result);
-    
+
     return parsedResult.map((video: any) => ({
       id: video.video_id,
       url: video.youtube_url,

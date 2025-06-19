@@ -86,7 +86,7 @@ export interface AppSettings {
   history: {
     title: string;
     url: string;
-    atId: string;
+    id: string;
     channelName: string;
     timestamp: number;
   }[];

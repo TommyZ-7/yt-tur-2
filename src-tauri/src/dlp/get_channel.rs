@@ -23,12 +23,11 @@ pub async fn dlp_get_channel_info(app_handle: tauri::AppHandle, channel_url: Str
         .arg("-J")
         .arg("--playlist-items")
         .arg("1")
-        .arg("--cookies-from-browser")
-        .arg("firefox")
         .arg(&channel_url)
         .output()
         .await
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
+
 
     if !output.status.success() {
         return Err(format!(
@@ -262,6 +261,7 @@ struct UrlVideoInfo {
     like_count: String,
     channel_url: String,
     channel_follower_count: String,
+    channel_handler: String,
 }
 
 
@@ -290,11 +290,12 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
         .arg("%(upload_date)s")
         .arg("--print")
         .arg("%(channel_follower_count)s")
+        .arg("--print")
+        .arg("%(channel)s")
         .arg(&video_url)
         .output()
         .await
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
-
 
      // レコードは2つの改行コード `[10, 10]` で区切られているため、それで分割する
     let records_bytes = output.stdout.split(|w| *w == 10).filter(|s| !s.is_empty());
@@ -304,18 +305,13 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
     let mut current_chunk = Vec::new();
     for item in records_bytes {
         current_chunk.push(item);
-        if current_chunk.len() == 6 {
+        if current_chunk.len() == 7 {
             chunked_records.push(current_chunk.clone());
             current_chunk.clear();
         }
     }
-    
-
 
     let record = &chunked_records[0];
-
-
-
         // 2番目の要素がShift_JISエンコードされたタイトル
         let (title_cow, _encoding_used, _had_errors) = SHIFT_JIS.decode(record[0]);
         let video_info = UrlVideoInfo {
@@ -325,9 +321,8 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
             channel_url: SHIFT_JIS.decode(record[3]).0.into_owned(),
             upload_date: SHIFT_JIS.decode(record[4]).0.into_owned(),
             channel_follower_count: SHIFT_JIS.decode(record[5]).0.into_owned(),
+            channel_handler: SHIFT_JIS.decode(record[6]).0.into_owned(),
         };
-
-
 
     // 動画情報をJSON形式で返す
     let video_info_json = json!({
@@ -337,6 +332,7 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
         "upload_date": video_info.upload_date,
         "channel_url": video_info.channel_url,
         "followers": video_info.channel_follower_count,
+        "channel_handler": video_info.channel_handler,
     });
 
     println!("Video Info: {:#?}", video_info_json);

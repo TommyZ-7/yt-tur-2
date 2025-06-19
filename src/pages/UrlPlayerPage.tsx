@@ -17,6 +17,7 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
 
     try {
       const parsedResult = await apiService.getVideoInfo(url);
+      console.log("Parsed Video Info:", parsedResult);
       setVideoInfo({
         title: parsedResult.title,
         views: parsedResult.view_count,
@@ -24,17 +25,21 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
         likes: parsedResult.like_count,
         subscribers: parsedResult.follower,
         channelUrl: parsedResult.channel_url,
+        channelId: parsedResult.channel_handler,
       });
 
       // チャンネル情報を取得（チャンネルURLから@IDを抽出）
       const channelId = extractChannelIdFromUrl(parsedResult.channel_url);
+      console.log("Extracted Channel ID:", channelId);
       if (channelId) {
-        const channelInfo = await apiService.getChannelInfo(channelId);
+        const channelInfo = await apiService.getChannelInfo(
+          "channel/" + channelId
+        );
         setVideoInfo((prev) => ({
           ...prev,
           name: channelInfo.name,
           icon: channelInfo.icon,
-          channelId: channelInfo.atId,
+          channelId: channelId || "",
         }));
       }
     } catch (error) {
@@ -59,6 +64,7 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
     }
     return null;
   };
+  console.log("Video Info:", videoInfo);
 
   return (
     <div className="container mx-auto">
@@ -75,6 +81,14 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
         className="mt-4 px-6 py-3 bg-red-500 hover:bg-red-600 rounded-lg text-white font-semibold transition-colors"
       >
         再生
+      </button>
+      <button
+        onClick={() => {
+          console.log(videoInfo);
+        }}
+        className="mt-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-semibold transition-colors"
+      >
+        動画情報取得
       </button>
       {videoLoaded && (
         <div className="mt-6">

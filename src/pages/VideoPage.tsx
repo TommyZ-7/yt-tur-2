@@ -39,7 +39,7 @@ export const VideoPage: FC<DetailPageProps> = ({ id, navigate, channels }) => {
             thumbnailUrl={video.thumbnail || ""}
             videoTitle={video.title}
             channelName={channel.name}
-            channelId={channel.atId}
+            channelId={channel.id}
           />
         </motion.div>
         <motion.h1

@@ -549,6 +549,11 @@ const NewPlayer: FC<NewPlayerProps> = ({
   };
 
   const recordToHistory = async () => {
+    console.log("Recording video to history...");
+    console.log("Video title:", videoTitle);
+    console.log("Channel name:", channelName);
+    console.log("Channel ID:", channelId);
+    console.log("YouTube URL:", youtubeUrl);
     if (
       historyRecordedRef.current ||
       !videoTitle ||
@@ -593,6 +598,12 @@ const NewPlayer: FC<NewPlayerProps> = ({
     }
     return null;
   };
+
+  useEffect(() => {
+    if (!youtubeUrl || historyRecordedRef.current) return;
+    console.log("Recording video to history...");
+    recordToHistory();
+  }, [youtubeUrl, videoTitle, channelName, channelId]);
 
   useEffect(() => {
     const initializePlayer = async () => {
@@ -710,9 +721,6 @@ const NewPlayer: FC<NewPlayerProps> = ({
         setIsPlaying(true);
         audio.play();
         syncAudioToVideo();
-
-        // 再生開始時に履歴に記録
-        recordToHistory();
       };
 
       const handlePause = () => {
