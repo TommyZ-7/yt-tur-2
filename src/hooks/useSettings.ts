@@ -16,7 +16,6 @@ export const useAppSettings = () => {
     const initStore = async () => {
       try {
         await store.init();
-
         const savedSettings = await loadAllSettings(store);
         setAppSettings(savedSettings);
       } catch (error) {
@@ -46,7 +45,12 @@ export const useAppSettings = () => {
         {};
       const history =
         ((await storeInstance.get("history")) as AppSettings["history"]) || {};
-
+      console.log("Loaded settings:", {
+        settings,
+        followChannel,
+        playlist,
+        history,
+      });
       return {
         settings,
         followChannel,
