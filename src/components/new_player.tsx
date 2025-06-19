@@ -11,6 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppSettings } from "@/hooks/useSettings";
+import { a } from "node_modules/framer-motion/dist/types.d-B_QPEvFK";
 
 /**
  * LoadingOverlayコンポーネント
@@ -389,7 +390,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
   const LoadedRef = useRef(false);
   const refreshRefTimeBackUp = useRef<number>(0);
 
-  const { addHistory } = useAppSettings();
+  const { addHistory, editVolume, appSettings } = useAppSettings();
   const historyRecordedRef = useRef(false);
 
   const hideControlsTimeout = () => {
@@ -453,6 +454,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
     setVolume(newVolume);
     audio.volume = newVolume;
     setIsMuted(newVolume === 0);
+    editVolume(newVolume); // 音量をパーセントで保存
   };
 
   const toggleMute = () => {
@@ -571,11 +573,10 @@ const NewPlayer: FC<NewPlayerProps> = ({
       const historyData = {
         title: videoTitle,
         url: youtubeUrl,
-        atId: channelId,
+        id: channelId,
         channelName: channelName,
         timestamp: Date.now(),
       };
-
       await addHistory(historyData);
       historyRecordedRef.current = true;
       console.log("Video added to history:", historyData);
@@ -668,6 +669,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
           videoStreamUrl,
           audioStreamUrl,
         });
+        console.log("Video formats:", appSettings.settings.volume);
       } catch (err) {
         console.error("エラーが発生:", err);
         setError(`エラー: ${err instanceof Error ? err.message : String(err)}`);
@@ -761,7 +763,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
     }
 
     return handleVideoEvents();
-  }, [youtubeUrl, refetchTrigger, videoTitle, channelName, channelId]);
+  }, [youtubeUrl, refetchTrigger, appSettings.settings.volume]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {

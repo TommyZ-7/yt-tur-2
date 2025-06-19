@@ -64,7 +64,7 @@ export interface AppSettings {
   };
   followChannel: {
     [key: string]: {
-      atId: string;
+      id: string;
       channelName: string;
       channelIcon: string;
     };
@@ -77,7 +77,7 @@ export interface AppSettings {
         [key: string]: {
           title: string;
           url: string;
-          atId: string;
+          id: string;
           channelName: string;
         };
       };
@@ -96,7 +96,7 @@ export const defaultAppSettings: AppSettings = {
   settings: {
     language: "ja",
     theme: "dark",
-    volume: 100,
+    volume: 1,
   },
   followChannel: {},
   playlist: {},

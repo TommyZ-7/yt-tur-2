@@ -236,6 +236,23 @@ export const useAppSettings = () => {
     }
   };
 
+  const editVolume = async (volume: number) => {
+    if (!store) return;
+
+    try {
+      const updatedSettings = { ...appSettings.settings, volume };
+      await store.set("settings", updatedSettings);
+      await store.save();
+
+      setAppSettings((prev) => ({
+        ...prev,
+        settings: updatedSettings,
+      }));
+    } catch (error) {
+      console.error("Failed to edit volume:", error);
+    }
+  };
+
   // 履歴の追加
   const addHistory = async (
     historyData: Omit<AppSettings["history"][0], "timestamp">
@@ -361,6 +378,8 @@ export const useAppSettings = () => {
     addVideoToPlaylist,
     removeVideoFromPlaylist,
     removePlaylist,
+    // 音量設定
+    editVolume,
     // 履歴
     addHistory,
     removeHistory,
