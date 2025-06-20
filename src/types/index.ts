@@ -73,15 +73,13 @@ export interface AppSettings {
       | "other";
     codecs: "av1" | "h264" | "vp9";
     resolution: "2160p" | "1440p" | "1080p" | "720p" | "480p" | "360p";
+    audioQuality: "high" | "medium" | "low";
     player: "new" | "dev";
   };
   followChannel: {
-    [key: string]: {
-      id: string;
-      channelName: string;
-      channelIcon: string;
-    };
-  };
+    id: string;
+    channelName: string;
+  }[];
   playlist: {
     [key: string]: {
       name: string;
@@ -114,8 +112,9 @@ export const defaultAppSettings: AppSettings = {
     codecs: "h264",
     resolution: "1080p",
     player: "new",
+    audioQuality: "high",
   },
-  followChannel: {},
+  followChannel: [],
   playlist: {},
   history: [],
 };

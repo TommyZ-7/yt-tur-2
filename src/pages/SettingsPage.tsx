@@ -10,6 +10,7 @@ import {
   Moon,
   Globe,
   ChevronDown,
+  GripVertical,
 } from "lucide-react";
 import {
   pageVariants,
@@ -17,40 +18,20 @@ import {
   itemVariants,
 } from "@/config/animations";
 import { useSettings } from "@/contexts/SettingsContext";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, Reorder } from "framer-motion";
 
-interface dummyNewChannel {
+interface channels {
   id: string;
-  name: string;
-  icon: string;
-  banner: string;
-  description: string;
-  subscribers: string;
-  videos: any[];
+  channelName: string;
 }
 
 export const SettingsPage: FC = () => {
   // 設定項目用のState
-  const [resolution, setResolution] = useState("1080p");
-  const [codec, setCodec] = useState("avc1");
-  const [audioQuality, setAudioQuality] = useState("high");
-  const [volume, setVolume] = useState(75);
-  const [language, setLanguage] = useState("ja");
-  const [cookieBrowser, setCookieBrowser] = useState("chrome");
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { appSettings, editVolume, updateSettings } = useSettings();
   const [newChannelUrl, setNewChannelUrl] = useState("");
-  const [channels, setChannels] = useState<dummyNewChannel[]>([
-    {
-      id: "@example_channel",
-      name: "Example Channel",
-      icon: "https://placehold.co/100x100/CCCCCC/FFFFFF?text=E",
-      banner:
-        "https://placehold.co/1600x400/9E9E9E/FFFFFF?text=Example+Channel",
-      description: "This is an example channel description.",
-      subscribers: "1000",
-      videos: [],
-    },
-  ]);
+  const [channels, setChannels] = useState<channels[]>(
+    appSettings.followChannel
+  );
 
   const addChannel = () => {
     if (!newChannelUrl.trim()) return;
@@ -143,28 +124,41 @@ export const SettingsPage: FC = () => {
                 <PlusCircle />
               </button>
             </div>
-            <div className="max-h-72 overflow-y-auto pr-2 space-y-2">
-              {channels.map((channel) => (
-                <div
-                  key={channel.id}
-                  className="flex items-center bg-neutral-800/50 p-2 rounded-lg"
-                >
-                  <img
-                    src={channel.icon}
-                    alt={channel.name}
-                    className="w-10 h-10 rounded-full mr-4"
-                  />
-                  <span className="text-white font-medium flex-grow truncate">
-                    {channel.name}
-                  </span>
-                  <button
-                    onClick={() => removeChannel(channel.id)}
-                    className="text-neutral-400 hover:text-red-500 transition-colors p-2"
+            <div className="max-h-72 overflow-y-auto pr-2">
+              <Reorder.Group
+                as="ul"
+                axis="y"
+                values={channels}
+                onReorder={setChannels}
+                className="space-y-2"
+              >
+                {channels.map((channel) => (
+                  <Reorder.Item
+                    key={channel.id}
+                    value={channel}
+                    as="li"
+                    className="flex items-center bg-neutral-800/50 p-2 rounded-lg"
                   >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              ))}
+                    <div className="text-neutral-400 cursor-grab mr-3">
+                      <GripVertical size={20} />
+                    </div>
+                    <img
+                      src={channel.icon}
+                      alt={channel.name}
+                      className="w-10 h-10 rounded-full mr-4"
+                    />
+                    <span className="text-white font-medium flex-grow truncate">
+                      {channel.name}
+                    </span>
+                    <button
+                      onClick={() => removeChannel(channel.id)}
+                      className="text-neutral-400 hover:text-red-500 transition-colors p-2"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
             </div>
           </section>
 
@@ -182,9 +176,19 @@ export const SettingsPage: FC = () => {
                   再生する動画のデフォルト解像度を選択します。
                 </p>
                 <SettingSelect
-                  value={resolution}
-                  options={["2160p", "1440p", "1080p", "720p"]}
-                  onChange={setResolution}
+                  value={appSettings.settings.resolution}
+                  options={["2160p", "1440p", "1080p", "720p", "480p", "360p"]}
+                  onChange={(value) =>
+                    updateSettings({
+                      resolution: value as
+                        | "2160p"
+                        | "1440p"
+                        | "1080p"
+                        | "720p"
+                        | "480p"
+                        | "360p",
+                    })
+                  }
                 />
               </div>
               <div>
@@ -195,9 +199,11 @@ export const SettingsPage: FC = () => {
                   対応している場合に優先して使用する映像コーデックです。
                 </p>
                 <SettingSelect
-                  value={codec}
-                  options={["av01", "vp9", "avc1"]}
-                  onChange={setCodec}
+                  value={appSettings.settings.codecs}
+                  options={["av1", "vp9", "h264"]}
+                  onChange={(value) =>
+                    updateSettings({ codecs: value as "av1" | "vp9" | "h264" })
+                  }
                 />
               </div>
               <div>
@@ -206,9 +212,13 @@ export const SettingsPage: FC = () => {
                   音声の品質を選択します。
                 </p>
                 <SettingSelect
-                  value={audioQuality}
+                  value={appSettings.settings.audioQuality}
                   options={["high", "medium", "low"]}
-                  onChange={setAudioQuality}
+                  onChange={(value) =>
+                    updateSettings({
+                      audioQuality: value as "high" | "medium" | "low",
+                    })
+                  }
                 />
               </div>
             </div>
@@ -232,12 +242,15 @@ export const SettingsPage: FC = () => {
                   <input
                     type="range"
                     min="0"
-                    max="100"
-                    value={volume}
-                    onChange={(e) => setVolume(Number(e.target.value))}
+                    max="1"
+                    step="0.01"
+                    value={appSettings.settings.volume}
+                    onChange={(e) => editVolume(parseFloat(e.target.value))}
                     className="w-full accent-red-500"
                   />
-                  <span className="w-10 text-center">{volume}</span>
+                  <span className="w-10 text-center">
+                    {appSettings.settings.volume}
+                  </span>
                 </div>
               </div>
               <div>
@@ -246,9 +259,11 @@ export const SettingsPage: FC = () => {
                   UIの表示言語を選択します。
                 </p>
                 <SettingSelect
-                  value={language}
+                  value={appSettings.settings.language}
                   options={["ja", "en"]}
-                  onChange={setLanguage}
+                  onChange={(value) =>
+                    updateSettings({ language: value as "ja" | "en" })
+                  }
                 />
               </div>
               <div>
@@ -260,9 +275,16 @@ export const SettingsPage: FC = () => {
                   <Moon />
                   <span className="flex-grow">ダークモード</span>
                   <button
-                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    onClick={() =>
+                      updateSettings({
+                        theme:
+                          appSettings.settings.theme === "dark"
+                            ? "light"
+                            : "dark",
+                      })
+                    }
                     className={`w-12 h-6 rounded-full flex items-center transition-colors ${
-                      isDarkMode
+                      appSettings.settings.theme === "dark"
                         ? "bg-red-600 justify-end"
                         : "bg-neutral-600 justify-start"
                     }`}
@@ -288,9 +310,21 @@ export const SettingsPage: FC = () => {
               {browsers.map((browser) => (
                 <button
                   key={browser}
-                  onClick={() => setCookieBrowser(browser)}
+                  onClick={() =>
+                    updateSettings({
+                      cookie: browser as
+                        | "brave"
+                        | "chrome"
+                        | "chromium"
+                        | "edge"
+                        | "firefox"
+                        | "safari"
+                        | "opera"
+                        | "vivaldi",
+                    })
+                  }
                   className={`p-4 rounded-lg flex flex-col items-center justify-center transition-all duration-200 border-2 ${
-                    cookieBrowser === browser
+                    appSettings.settings.cookie === browser
                       ? "border-red-500 bg-red-600/20"
                       : "border-transparent bg-neutral-800/50 hover:bg-neutral-700"
                   }`}

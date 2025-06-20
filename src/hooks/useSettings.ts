@@ -84,24 +84,24 @@ export const useAppSettings = () => {
   };
 
   // フォローチャンネルの追加
-  const addFollowChannel = async (
-    channelId: string,
-    channelData: AppSettings["followChannel"][string]
-  ) => {
+  const addFollowChannel = async (channelId: string, channelName: string) => {
     if (!store) return;
-
     try {
-      const updatedChannels = {
-        ...appSettings.followChannel,
-        [channelId]: channelData,
-      };
+      if (
+        appSettings.followChannel.some((channel) => channel.id === channelId)
+      ) {
+        console.warn(`Channel with ID ${channelId} already exists.`);
+        return;
+      }
+      const newChannel = { id: channelId, channelName };
+      const updatedFollowChannels = [...appSettings.followChannel, newChannel];
 
-      await store.set("followChannel", updatedChannels);
+      await store.set("followChannel", updatedFollowChannels);
       await store.save();
 
       setAppSettings((prev) => ({
         ...prev,
-        followChannel: updatedChannels,
+        followChannel: updatedFollowChannels,
       }));
     } catch (error) {
       console.error("Failed to add follow channel:", error);
@@ -113,18 +113,49 @@ export const useAppSettings = () => {
     if (!store) return;
 
     try {
-      const updatedChannels = { ...appSettings.followChannel };
-      delete updatedChannels[channelId];
+      const updatedFollowChannels = appSettings.followChannel.filter(
+        (channel) => channel.id !== channelId
+      );
 
-      await store.set("followChannel", updatedChannels);
+      await store.set("followChannel", updatedFollowChannels);
       await store.save();
 
       setAppSettings((prev) => ({
         ...prev,
-        followChannel: updatedChannels,
+        followChannel: updatedFollowChannels,
       }));
     } catch (error) {
       console.error("Failed to remove follow channel:", error);
+    }
+  };
+
+  const editFollowChannel = async (channelId: string, moveIndexx: number) => {
+    if (!store) return;
+    // channelIdをmoveIndexxの位置に移動
+    try {
+      const updatedFollowChannels = [...appSettings.followChannel];
+      const channelIndex = updatedFollowChannels.findIndex(
+        (channel) => channel.id === channelId
+      );
+
+      if (channelIndex === -1) {
+        console.warn(`Channel with ID ${channelId} not found.`);
+        return;
+      }
+
+      // チャンネルを移動
+      const [movedChannel] = updatedFollowChannels.splice(channelIndex, 1);
+      updatedFollowChannels.splice(moveIndexx, 0, movedChannel);
+
+      await store.set("followChannel", updatedFollowChannels);
+      await store.save();
+
+      setAppSettings((prev) => ({
+        ...prev,
+        followChannel: updatedFollowChannels,
+      }));
+    } catch (error) {
+      console.error("Failed to edit follow channel:", error);
     }
   };
 
@@ -378,6 +409,7 @@ export const useAppSettings = () => {
     // フォローチャンネル
     addFollowChannel,
     removeFollowChannel,
+    editFollowChannel,
     // プレイリスト
     updatePlaylist,
     addVideoToPlaylist,

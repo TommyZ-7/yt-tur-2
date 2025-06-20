@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Channel, Video } from "@/types";
 import { apiService } from "@/services/api";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export const useChannels = () => {
+  const { appSettings } = useSettings();
   const [channelList, setChannelList] = useState<Channel[]>([]);
   const hasRun = useRef(false);
-  
-  const debugChannelList = ["@hinanotachiba7", "@bokuwata_ch"];
 
   useEffect(() => {
     if (hasRun.current) return;
@@ -15,22 +15,22 @@ export const useChannels = () => {
     const fetchChannelInfo = async (channelId: string): Promise<Channel> => {
       const channel = await apiService.getChannelInfo(channelId);
       const videos = await apiService.getChannelNewVideos(channelId);
-      
+
       channel.videos = videos;
       setChannelList((prev) => [...prev, channel]);
-      
+
       return channel;
     };
 
     const fetchAllChannels = async (): Promise<Channel[]> => {
       const channels: Channel[] = [];
-      for (const channelId of debugChannelList) {
+      for (const channel of appSettings.followChannel) {
         try {
-          const channelInfo = await fetchChannelInfo(channelId);
+          const channelInfo = await fetchChannelInfo(channel.id);
           channels.push(channelInfo);
         } catch (error) {
           console.error(
-            `Failed to fetch channel info for ${channelId}:`,
+            `Failed to fetch channel info for ${channel.id}:`,
             error
           );
         }
@@ -55,7 +55,11 @@ export const useChannels = () => {
     executeSequentially();
   }, []);
 
-  const handleUpdateChannelList = (newVideos: Video[], fetchCount: number, channelId: string) => {
+  const handleUpdateChannelList = (
+    newVideos: Video[],
+    fetchCount: number,
+    channelId: string
+  ) => {
     setChannelList((prevChannels) =>
       prevChannels.map((channel) => {
         if (channel.id === channelId) {

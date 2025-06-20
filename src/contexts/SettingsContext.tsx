@@ -8,11 +8,9 @@ interface SettingsContextType {
   updateSettings: (
     newSettings: Partial<AppSettings["settings"]>
   ) => Promise<void>;
-  addFollowChannel: (
-    channelId: string,
-    channelData: AppSettings["followChannel"][string]
-  ) => Promise<void>;
+  addFollowChannel: (channelId: string, channelData: string) => Promise<void>;
   removeFollowChannel: (channelId: string) => Promise<void>;
+  editFollowChannel: (channelId: string, moveIndex: number) => Promise<void>;
   updatePlaylist: (
     playlistId: string,
     playlistData: AppSettings["playlist"][string]
