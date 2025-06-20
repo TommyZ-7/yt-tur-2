@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Loader } from "lucide-react";
+import { Menu, Loader, Settings } from "lucide-react";
 import "@/App.css";
 import { PageState, NavigateFunction } from "@/types";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -10,6 +10,7 @@ import { VideoPage } from "@/pages/VideoPage";
 import { SubscriptionsPage } from "@/pages/SubscriptionsPage";
 import { UrlPlayerPage } from "@/pages/UrlPlayerPage";
 import { HistoryPage } from "@/pages/HistoryPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { useChannels } from "@/hooks/useChannels";
 
 export default function App() {
@@ -75,6 +76,8 @@ export default function App() {
         return <HistoryPage navigate={navigate} />;
       case "player":
         return <UrlPlayerPage directUrl={page.id || ""} />;
+      case "settings":
+        return <SettingsPage />;
       case "home":
       default:
         return <HomePage navigate={navigate} channels={channelList} />;

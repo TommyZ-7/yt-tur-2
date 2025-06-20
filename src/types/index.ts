@@ -27,7 +27,8 @@ export interface PageState {
     | "channelList"
     | "playlist"
     | "history"
-    | "player";
+    | "player"
+    | "settings";
 
   id: string | null; // チャンネルIDまたは動画ID
 }

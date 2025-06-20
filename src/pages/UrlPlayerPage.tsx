@@ -29,7 +29,6 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
 
       // チャンネル情報を取得（チャンネルURLから@IDを抽出）
       const channelId = extractChannelIdFromUrl(parsedResult.channel_url);
-      console.log("Extracted Channel ID:", channelId);
       if (channelId) {
         const channelInfo = await apiService.getChannelInfo(
           "channel/" + channelId
@@ -45,8 +44,6 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
       console.error("Error fetching video info:", error);
     }
   };
-
-  console.log("Video Info:", videoInfo);
 
   return (
     <div className="container mx-auto">
@@ -79,7 +76,9 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
             thumbnailUrl=""
             videoTitle={videoInfo?.title}
             channelName={videoInfo?.name}
-            channelId={videoInfo?.channelUrl}
+            channelId={
+              extractChannelIdFromUrl(videoInfo?.channelUrl || "") || ""
+            }
           />
           <motion.h1
             className="text-3xl font-bold text-white mt-6"

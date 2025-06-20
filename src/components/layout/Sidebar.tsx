@@ -7,6 +7,7 @@ import {
   Menu,
   PlayCircle,
   Users,
+  Settings,
 } from "lucide-react";
 import { NavigateFunction, PageState } from "@/types";
 import { sidebarVariants, navItemVariants } from "@/config/animations";
@@ -43,6 +44,11 @@ export const Sidebar: FC<SidebarProps> = ({ isOpen, setIsOpen, navigate }) => {
       icon: Menu,
       label: "プレイヤー",
       page: { name: "player", id: null } as PageState,
+    },
+    {
+      icon: Settings,
+      label: "設定",
+      page: { name: "settings", id: null } as PageState,
     },
   ];
 

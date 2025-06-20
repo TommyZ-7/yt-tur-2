@@ -262,7 +262,7 @@ export const useAppSettings = () => {
     historyData: Omit<AppSettings["history"][0], "timestamp">
   ) => {
     if (!store) return;
-
+    console.log("AddHistory called:", historyData);
     try {
       const newHistoryEntry = {
         ...historyData,

@@ -556,20 +556,20 @@ const NewPlayer: FC<NewPlayerProps> = ({
       historyRecordedRef.current ||
       !videoTitle ||
       !channelName ||
-      !youtubeUrl
+      !youtubeUrl ||
+      !channelId
     ) {
+      console.log("History already recorded or missing required data.");
       return;
     }
 
     try {
       // 動画IDをURLから抽出
-      const channelId2 = extractChannelIdFromUrl(channelId || "");
-      if (!channelId2) return;
 
       const historyData = {
         title: videoTitle,
         url: youtubeUrl,
-        id: channelId2 || "",
+        id: channelId,
         channelName: channelName,
         timestamp: Date.now(),
       };
@@ -585,7 +585,7 @@ const NewPlayer: FC<NewPlayerProps> = ({
     if (!youtubeUrl || historyRecordedRef.current) return;
     console.log("Recording video to history...");
     recordToHistory();
-  }, [youtubeUrl, videoTitle, channelName]);
+  }, [youtubeUrl, videoTitle, channelName, channelId]);
 
   useEffect(() => {
     const initializePlayer = async () => {
