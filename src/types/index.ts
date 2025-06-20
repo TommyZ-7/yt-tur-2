@@ -61,6 +61,19 @@ export interface AppSettings {
     language: string;
     theme: string;
     volume: number;
+    cookie:
+      | "brave"
+      | "chrome"
+      | "chromium"
+      | "edge"
+      | "firefox"
+      | "safari"
+      | "opera"
+      | "vivaldi"
+      | "other";
+    codecs: "av1" | "h264" | "vp9";
+    resolution: "2160p" | "1440p" | "1080p" | "720p" | "480p" | "360p";
+    player: "new" | "dev";
   };
   followChannel: {
     [key: string]: {
@@ -97,6 +110,10 @@ export const defaultAppSettings: AppSettings = {
     language: "ja",
     theme: "dark",
     volume: 1,
+    cookie: "chrome",
+    codecs: "h264",
+    resolution: "1080p",
+    player: "new",
   },
   followChannel: {},
   playlist: {},
