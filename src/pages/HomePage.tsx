@@ -17,7 +17,6 @@ export const HomePage: FC<PageProps> = ({ navigate, channels }) => (
     exit="out"
     transition={pageTransition as Transition}
   >
-    <h1 className="text-4xl font-bold text-white mb-8">人気のチャンネル</h1>
     <motion.div
       className="grid grid-cols-1 lg:grid-cols-2 gap-8"
       variants={listVariants}

@@ -11,6 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
+import { extractChannelIdFromUrl } from "@/lib/utils";
 
 /**
  * LoadingOverlayコンポーネント
@@ -551,29 +552,24 @@ const NewPlayer: FC<NewPlayerProps> = ({
   };
 
   const recordToHistory = async () => {
-    console.log("Recording video to history...");
-    console.log("Video title:", videoTitle);
-    console.log("Channel name:", channelName);
-    console.log("Channel ID:", channelId);
-    console.log("YouTube URL:", youtubeUrl);
     if (
       historyRecordedRef.current ||
       !videoTitle ||
       !channelName ||
-      !channelId
+      !youtubeUrl
     ) {
       return;
     }
 
     try {
       // 動画IDをURLから抽出
-      const videoId = extractVideoIdFromUrl(youtubeUrl);
-      if (!videoId) return;
+      const channelId2 = extractChannelIdFromUrl(channelId || "");
+      if (!channelId2) return;
 
       const historyData = {
         title: videoTitle,
         url: youtubeUrl,
-        id: channelId,
+        id: channelId2 || "",
         channelName: channelName,
         timestamp: Date.now(),
       };
@@ -585,26 +581,11 @@ const NewPlayer: FC<NewPlayerProps> = ({
     }
   };
 
-  const extractVideoIdFromUrl = (url: string): string | null => {
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-      /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) {
-        return match[1];
-      }
-    }
-    return null;
-  };
-
   useEffect(() => {
     if (!youtubeUrl || historyRecordedRef.current) return;
     console.log("Recording video to history...");
     recordToHistory();
-  }, [youtubeUrl, videoTitle, channelName, channelId]);
+  }, [youtubeUrl, videoTitle, channelName]);
 
   useEffect(() => {
     const initializePlayer = async () => {
@@ -974,7 +955,8 @@ const NewPlayer: FC<NewPlayerProps> = ({
                             : "text-white"
                         }`}
                       >
-                        {format.quality} ({format.codec})
+                        {format.quality} ({format.codec}) (
+                        {format.hfr ? "60fps" : "30fps"})
                       </button>
                     ))}
                   </div>

@@ -15,4 +15,22 @@ function formatNumberWithSlashes(input: number | string): string {
   return `${year}/${month}/${day}`;
 }
 
-export { formatNumberWithSlashes };
+const extractChannelIdFromUrl = (channelUrl: string): string | null => {
+  // YouTube チャンネルURLから@IDまたはチャンネルIDを抽出
+  const patterns = [
+    /youtube\.com\/@([^/?]+)/,
+    /youtube\.com\/channel\/([^/?]+)/,
+    /youtube\.com\/c\/([^/?]+)/,
+    /youtube\.com\/user\/([^/?]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = channelUrl.match(pattern);
+    if (match) {
+      return match[0].includes("/@") ? `@${match[1]}` : match[1];
+    }
+  }
+  return null;
+};
+
+export { formatNumberWithSlashes, extractChannelIdFromUrl };

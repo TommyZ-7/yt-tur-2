@@ -2,7 +2,7 @@ import { FC, useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, Calendar } from "lucide-react";
 import { UrlPlayerProps } from "@/types";
-import { formatNumberWithSlashes } from "@/lib/utils";
+import { formatNumberWithSlashes, extractChannelIdFromUrl } from "@/lib/utils";
 import { apiService } from "@/services/api";
 import NewPlayer from "@/components/new_player";
 
@@ -25,7 +25,6 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
         likes: parsedResult.like_count,
         subscribers: parsedResult.follower,
         channelUrl: parsedResult.channel_url,
-        channelId: parsedResult.channel_handler,
       });
 
       // チャンネル情報を取得（チャンネルURLから@IDを抽出）
@@ -47,23 +46,6 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
     }
   };
 
-  const extractChannelIdFromUrl = (channelUrl: string): string | null => {
-    // YouTube チャンネルURLから@IDまたはチャンネルIDを抽出
-    const patterns = [
-      /youtube\.com\/@([^/?]+)/,
-      /youtube\.com\/channel\/([^/?]+)/,
-      /youtube\.com\/c\/([^/?]+)/,
-      /youtube\.com\/user\/([^/?]+)/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = channelUrl.match(pattern);
-      if (match) {
-        return match[0].includes("/@") ? `@${match[1]}` : match[1];
-      }
-    }
-    return null;
-  };
   console.log("Video Info:", videoInfo);
 
   return (
@@ -97,7 +79,7 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
             thumbnailUrl=""
             videoTitle={videoInfo?.title}
             channelName={videoInfo?.name}
-            channelId={videoInfo?.channelId}
+            channelId={videoInfo?.channelUrl}
           />
           <motion.h1
             className="text-3xl font-bold text-white mt-6"
