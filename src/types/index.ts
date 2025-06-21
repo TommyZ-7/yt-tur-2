@@ -103,6 +103,9 @@ export interface AppSettings {
     channelName: string;
     timestamp: number;
   }[];
+  state: {
+    channelLoading: boolean;
+  };
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -120,4 +123,7 @@ export const defaultAppSettings: AppSettings = {
   followChannel: [],
   playlist: {},
   history: [],
+  state: {
+    channelLoading: false,
+  },
 };

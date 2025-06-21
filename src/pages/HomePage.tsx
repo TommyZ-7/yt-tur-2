@@ -7,26 +7,31 @@ import {
   listVariants,
 } from "@/config/animations";
 import { ChannelCard } from "@/components/cards/ChannelCard";
+import { ChannelCardSkeleton } from "@/components/cards/ChannelCardSkelton";
 import { useSettings } from "@/contexts/SettingsContext";
 
-export const HomePage: FC<PageProps> = ({ navigate, channels }) => (
-  <motion.div
-    key="home"
-    variants={pageVariants}
-    initial="initial"
-    animate="in"
-    exit="out"
-    transition={pageTransition as Transition}
-  >
+export const HomePage: FC<PageProps> = ({ navigate, channels }) => {
+  const { appSettings } = useSettings();
+  return (
     <motion.div
-      className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-      variants={listVariants}
-      initial="hidden"
-      animate="visible"
+      key="home"
+      variants={pageVariants}
+      initial="initial"
+      animate="in"
+      exit="out"
+      transition={pageTransition as Transition}
     >
-      {channels.map((channel) => (
-        <ChannelCard key={channel.id} channel={channel} navigate={navigate} />
-      ))}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+        variants={listVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {channels.map((channel) => (
+          <ChannelCard key={channel.id} channel={channel} navigate={navigate} />
+        ))}
+        {appSettings.state.channelLoading && <ChannelCardSkeleton />}
+      </motion.div>
     </motion.div>
-  </motion.div>
-);
+  );
+};

@@ -35,7 +35,7 @@ const SubscriptionChannelItem: FC<SubscriptionChannelItemProps> = ({
       <motion.img
         src={channel.banner}
         alt={`${channel.name} banner`}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 ease-in-out group-hover:scale-110"
       />
       <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-colors duration-300"></div>
       <div className="relative h-full flex flex-col items-center justify-center p-4">

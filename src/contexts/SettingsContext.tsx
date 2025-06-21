@@ -32,6 +32,7 @@ interface SettingsContextType {
   ) => Promise<void>;
   removeHistory: (index: number) => Promise<void>;
   clearHistory: () => Promise<void>;
+  changeChannnelLoading: (isLoading: boolean) => void;
   resetAllSettings: () => Promise<void>;
 }
 
@@ -63,6 +64,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
         addHistory: settingsHook.addHistory,
         removeHistory: settingsHook.removeHistory,
         clearHistory: settingsHook.clearHistory,
+        changeChannnelLoading: settingsHook.changeChannnelLoading,
         resetAllSettings: settingsHook.resetAllSettings,
       }}
     >

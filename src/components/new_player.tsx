@@ -11,7 +11,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState, useRef, useEffect, FC } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@/contexts/SettingsContext";
-import { extractChannelIdFromUrl } from "@/lib/utils";
 
 /**
  * LoadingOverlayコンポーネント

@@ -16,6 +16,7 @@ import { pageVariants, pageTransition } from "@/config/animations";
 import { useSettings } from "@/contexts/SettingsContext";
 import { AnimatePresence, Reorder } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
+import { SpinnerLoader } from "@/components/animationIcon/spiner";
 
 export const SettingsPage: FC = () => {
   // 設定項目用のState
@@ -119,9 +120,10 @@ export const SettingsPage: FC = () => {
               />
               <button
                 onClick={addChannel}
+                disabled={isLoading}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg transition-colors"
               >
-                {isLoading ? <PlusCircle /> : <PlusCircle size={20} />}
+                {isLoading ? <SpinnerLoader /> : <PlusCircle size={20} />}
               </button>
             </div>
             <div className="max-h-72 overflow-y-auto pr-2">

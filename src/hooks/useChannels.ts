@@ -4,7 +4,7 @@ import { apiService } from "@/services/api";
 import { useSettings } from "@/contexts/SettingsContext";
 
 export const useChannels = () => {
-  const { appSettings, channelCache } = useSettings();
+  const { appSettings, channelCache, changeChannnelLoading } = useSettings();
   const [channelList, setChannelList] = useState<Channel[]>([]);
   const isRunning = useRef(false);
 
@@ -54,10 +54,12 @@ export const useChannels = () => {
     const executeSequentially = async () => {
       try {
         console.log("--- Start: Fetching all channels ---");
+        changeChannnelLoading(true);
         console.log(appSettings.followChannel);
         const channels = await fetchAllChannels();
         setChannelList(channels);
         isRunning.current = false;
+        changeChannnelLoading(false);
         console.log("--- End: Fetching all channels ---");
       } catch (error) {
         console.error(

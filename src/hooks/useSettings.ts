@@ -46,17 +46,22 @@ export const useAppSettings = () => {
       const history =
         ((await storeInstance.get("history")) as AppSettings["history"]) ||
         defaultAppSettings.history;
+      const state =
+        ((await storeInstance.get("state")) as AppSettings["state"]) ||
+        defaultAppSettings.state;
       console.log("Loaded settings:", {
         settings,
         followChannel,
         playlist,
         history,
+        state,
       });
       return {
         settings,
         followChannel,
         playlist,
         history,
+        state,
       };
     } catch (error) {
       console.error("Failed to load settings:", error);
@@ -415,6 +420,16 @@ export const useAppSettings = () => {
     }
   };
 
+  const changeChannnelLoading = (loading: boolean) => {
+    appSettings.state = {
+      channelLoading: loading,
+    };
+    setAppSettings((prev) => ({
+      ...prev,
+      state: appSettings.state,
+    }));
+  };
+
   // 全設定のリセット
   const resetAllSettings = async () => {
     if (!store) return;
@@ -450,6 +465,8 @@ export const useAppSettings = () => {
     addHistory,
     removeHistory,
     clearHistory,
+    //! 状態管理変数 状態管理は今後変更予定
+    changeChannnelLoading,
     // 全体操作
     resetAllSettings,
   };
