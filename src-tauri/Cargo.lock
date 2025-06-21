@@ -5928,7 +5928,7 @@ dependencies = [
 
 [[package]]
 name = "yt-tur-2"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "axum",
  "base64 0.21.7",

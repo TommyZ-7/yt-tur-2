@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Loader, Settings } from "lucide-react";
+import { Menu, Loader } from "lucide-react";
 import "@/App.css";
 import { PageState, NavigateFunction } from "@/types";
 import { Sidebar } from "@/components/layout/Sidebar";

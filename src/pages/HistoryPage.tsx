@@ -32,9 +32,7 @@ export const HistoryPage: FC<HistoryPageProps> = ({ navigate }) => {
   };
 
   const handleRemoveHistory = async (videoId: string) => {
-    const index = appSettings.history.findIndex(
-      (item, idx) => historyEntries[idx] && historyEntries[idx][0] === videoId
-    );
+    const index = historyEntries.findIndex(([id]) => id === videoId);
     if (index !== -1) {
       await removeHistory(index);
     }
