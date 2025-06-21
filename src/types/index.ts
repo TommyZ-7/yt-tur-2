@@ -73,12 +73,14 @@ export interface AppSettings {
       | "other";
     codecs: "av1" | "h264" | "vp9";
     resolution: "2160p" | "1440p" | "1080p" | "720p" | "480p" | "360p";
+    hfr: boolean;
     audioQuality: "high" | "medium" | "low";
     player: "new" | "dev";
   };
   followChannel: {
     id: string;
     channelName: string;
+    cache?: Channel;
   }[];
   playlist: {
     [key: string]: {
@@ -111,6 +113,7 @@ export const defaultAppSettings: AppSettings = {
     cookie: "chrome",
     codecs: "h264",
     resolution: "1080p",
+    hfr: true,
     player: "new",
     audioQuality: "high",
   },

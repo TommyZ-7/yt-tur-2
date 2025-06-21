@@ -12,47 +12,47 @@ import {
   ChevronDown,
   GripVertical,
 } from "lucide-react";
-import {
-  pageVariants,
-  pageTransition,
-  itemVariants,
-} from "@/config/animations";
+import { pageVariants, pageTransition } from "@/config/animations";
 import { useSettings } from "@/contexts/SettingsContext";
 import { AnimatePresence, Reorder } from "framer-motion";
-
-interface channels {
-  id: string;
-  channelName: string;
-}
+import { invoke } from "@tauri-apps/api/core";
 
 export const SettingsPage: FC = () => {
   // 設定項目用のState
-  const { appSettings, editVolume, updateSettings } = useSettings();
+  const { appSettings, editVolume, updateSettings, addFollowChannel } =
+    useSettings();
   const [newChannelUrl, setNewChannelUrl] = useState("");
-  const [channels, setChannels] = useState<channels[]>(
-    appSettings.followChannel
-  );
+  const [isLoading, setIsLoading] = useState(false);
 
-  const addChannel = () => {
+  const addChannel = async () => {
     if (!newChannelUrl.trim()) return;
-    // 本来はここでチャンネル情報を取得する
+    setIsLoading(true);
     console.log("Adding channel:", newChannelUrl);
-    // ダミーとして追加
-    const dummyNewChannel = {
-      id: `@${newChannelUrl.split("/").pop()}`,
-      name: newChannelUrl,
-      icon: "https://placehold.co/100x100/CCCCCC/FFFFFF?text=N",
-      banner: "https://placehold.co/1600x400/9E9E9E/FFFFFF?text=New+Channel",
-      description: "新しいチャンネルの説明です。",
-      subscribers: "0",
-      videos: [],
+    const newChannel = await invoke("dlp_get_channel_info", {
+      channelUrl: newChannelUrl,
+    });
+    const parsedChannel = JSON.parse(newChannel as string);
+    console.log("Parsed Channel Info:", parsedChannel);
+    const addingChannel = {
+      id: parsedChannel.channel_id,
+      channelName: parsedChannel.channel_name,
     };
-    setChannels((prev) => [...prev, dummyNewChannel]);
+
+    addFollowChannel(addingChannel.id, addingChannel.channelName);
+    setIsLoading(false);
+
+    console.log("New channel info:", newChannel);
+
     setNewChannelUrl("");
   };
 
-  const removeChannel = (channelId: string) => {
-    setChannels((prev) => prev.filter((c) => c.id !== channelId));
+  const removeChannel = async (channelId: string) => {
+    console.log("Removing channel:", channelId);
+  };
+
+  const setChannels = (channels: { id: string; channelName: string }[]) => {
+    console.log("Reordered channels:", channels);
+    // 本来はここで設定を更新する
   };
 
   const browsers = [
@@ -121,44 +121,47 @@ export const SettingsPage: FC = () => {
                 onClick={addChannel}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg transition-colors"
               >
-                <PlusCircle />
+                {isLoading ? <PlusCircle /> : <PlusCircle size={20} />}
               </button>
             </div>
             <div className="max-h-72 overflow-y-auto pr-2">
-              <Reorder.Group
-                as="ul"
-                axis="y"
-                values={channels}
-                onReorder={setChannels}
-                className="space-y-2"
-              >
-                {channels.map((channel) => (
-                  <Reorder.Item
-                    key={channel.id}
-                    value={channel}
-                    as="li"
-                    className="flex items-center bg-neutral-800/50 p-2 rounded-lg"
-                  >
-                    <div className="text-neutral-400 cursor-grab mr-3">
-                      <GripVertical size={20} />
-                    </div>
-                    <img
-                      src={channel.icon}
-                      alt={channel.name}
-                      className="w-10 h-10 rounded-full mr-4"
-                    />
-                    <span className="text-white font-medium flex-grow truncate">
-                      {channel.name}
-                    </span>
-                    <button
-                      onClick={() => removeChannel(channel.id)}
-                      className="text-neutral-400 hover:text-red-500 transition-colors p-2"
+              {appSettings.followChannel.length === 0 && (
+                <p className="text-neutral-400">
+                  登録されているチャンネルはありません。
+                </p>
+              )}
+              {appSettings.followChannel.length > 0 && (
+                <Reorder.Group
+                  as="ul"
+                  axis="y"
+                  values={appSettings.followChannel}
+                  onReorder={setChannels}
+                  className="space-y-2"
+                >
+                  {appSettings.followChannel.map((channel) => (
+                    <Reorder.Item
+                      key={channel.id}
+                      value={channel}
+                      as="li"
+                      className="flex items-center bg-neutral-800/50 p-2 rounded-lg"
                     >
-                      <Trash2 size={18} />
-                    </button>
-                  </Reorder.Item>
-                ))}
-              </Reorder.Group>
+                      <div className="text-neutral-400 cursor-grab mr-3">
+                        <GripVertical size={20} />
+                      </div>
+
+                      <span className="text-white font-medium flex-grow truncate">
+                        {channel.channelName}
+                      </span>
+                      <button
+                        onClick={() => removeChannel(channel.id)}
+                        className="text-neutral-400 hover:text-red-500 transition-colors p-2"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </Reorder.Item>
+                  ))}
+                </Reorder.Group>
+              )}
             </div>
           </section>
 
@@ -221,6 +224,19 @@ export const SettingsPage: FC = () => {
                   }
                 />
               </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  HighFrameRate
+                </h3>
+                <p className="text-neutral-400 text-sm mb-3">
+                  動画をより滑らかに再生するかどうかを選択します。
+                </p>
+                <SettingSelect
+                  value={appSettings.settings.hfr ? "on" : "off"}
+                  options={["on", "off"]}
+                  onChange={(value) => updateSettings({ hfr: value === "on" })}
+                />
+              </div>
             </div>
           </section>
 
@@ -244,12 +260,12 @@ export const SettingsPage: FC = () => {
                     min="0"
                     max="1"
                     step="0.01"
-                    value={appSettings.settings.volume}
+                    defaultValue={appSettings.settings.volume}
                     onChange={(e) => editVolume(parseFloat(e.target.value))}
                     className="w-full accent-red-500"
                   />
                   <span className="w-10 text-center">
-                    {appSettings.settings.volume}
+                    {appSettings.settings.volume * 100}%
                   </span>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { Channel, Video } from "@/types";
 export const apiService = {
   async getChannelInfo(channelId: string): Promise<Channel> {
     const result = await invoke<string>("dlp_get_channel_info", {
-      channelUrl: "https://www.youtube.com/" + channelId,
+      channelUrl: "https://www.youtube.com/channel/" + channelId,
     });
     const parsedResult = JSON.parse(result);
     console.log("Parsed Channel Info:", parsedResult);
@@ -24,7 +24,7 @@ export const apiService = {
 
   async getChannelNewVideos(channelId: string): Promise<Video[]> {
     const result = await invoke<string>("dlp_get_channel_newvideo", {
-      channelUrl: "https://www.youtube.com/" + channelId + "/videos",
+      channelUrl: "https://www.youtube.com/channel/" + channelId + "/videos",
     });
     const parsedResult = JSON.parse(result);
 
@@ -43,7 +43,7 @@ export const apiService = {
     offset: number
   ): Promise<Video[]> {
     const result = await invoke<string>("dlp_get_channel_morevideo", {
-      channelUrl: "https://www.youtube.com/" + channelId + "/videos",
+      channelUrl: "https://www.youtube.com/channel/" + channelId + "/videos",
       offset: offset,
     });
     const parsedResult = JSON.parse(result);

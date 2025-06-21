@@ -621,7 +621,41 @@ const NewPlayer: FC<NewPlayerProps> = ({
           return;
         }
 
-        const selectedVideo = videoFormats[0];
+        const selectCodec = appSettings.settings.codecs;
+        const selectResolution = appSettings.settings.resolution;
+        const selectHFR = appSettings.settings.hfr;
+
+        // 設定に基づいて最適なビデオフォーマットを選択
+        let bestVideoFormat = null;
+
+        // 1. 完全一致を探す
+        bestVideoFormat = videoFormats.find(
+          (format) =>
+            format.codec === selectCodec &&
+            format.quality === selectResolution &&
+            format.hfr === selectHFR
+        );
+
+        // 2. 完全一致がない場合、優先度に基づいて選択
+        if (!bestVideoFormat) {
+          // Resolution > Codec > HFR の優先度で選択
+          bestVideoFormat =
+            videoFormats.find(
+              (format) =>
+                format.quality === selectResolution &&
+                format.codec === selectCodec
+            ) ||
+            videoFormats.find(
+              (format) => format.quality === selectResolution
+            ) ||
+            videoFormats.find((format) => format.codec === selectCodec) ||
+            videoFormats[0]; // フォールバック
+        }
+
+        // selectの3つに一致するフォーマットを選択する。
+        // もしなければ、Resolution,Codecs, HFRの優先度で一致するフォーマットを選択する。
+
+        const selectedVideo = bestVideoFormat || videoFormats[0];
         const selectedAudio = audioFormats[0];
 
         if (!selectedVideo?.id || !selectedAudio?.id) {

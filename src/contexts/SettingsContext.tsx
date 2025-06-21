@@ -1,6 +1,6 @@
 import React, { createContext, useContext, ReactNode } from "react";
 import { useAppSettings } from "@/hooks/useSettings";
-import { AppSettings } from "@/types";
+import { AppSettings, Channel } from "@/types";
 
 interface SettingsContextType {
   appSettings: AppSettings;
@@ -15,6 +15,7 @@ interface SettingsContextType {
     playlistId: string,
     playlistData: AppSettings["playlist"][string]
   ) => Promise<void>;
+  channelCache: (channel: Channel) => Promise<void>;
   addVideoToPlaylist: (
     playlistId: string,
     videoId: string,
@@ -44,7 +45,27 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
   const settingsHook = useAppSettings();
 
   return (
-    <SettingsContext.Provider value={settingsHook}>
+    <SettingsContext.Provider
+      value={{
+        appSettings: settingsHook.appSettings,
+        isLoading: settingsHook.isLoading,
+        updateSettings: settingsHook.updateSettings,
+        addFollowChannel: settingsHook.addFollowChannel,
+        removeFollowChannel: settingsHook.removeFollowChannel,
+
+        editFollowChannel: settingsHook.editFollowChannel,
+        updatePlaylist: settingsHook.updatePlaylist,
+        channelCache: settingsHook.channelCache,
+        addVideoToPlaylist: settingsHook.addVideoToPlaylist,
+        removeVideoFromPlaylist: settingsHook.removeVideoFromPlaylist,
+        removePlaylist: settingsHook.removePlaylist,
+        editVolume: settingsHook.editVolume,
+        addHistory: settingsHook.addHistory,
+        removeHistory: settingsHook.removeHistory,
+        clearHistory: settingsHook.clearHistory,
+        resetAllSettings: settingsHook.resetAllSettings,
+      }}
+    >
       {children}
     </SettingsContext.Provider>
   );

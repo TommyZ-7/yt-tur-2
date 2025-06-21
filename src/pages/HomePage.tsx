@@ -7,6 +7,7 @@ import {
   listVariants,
 } from "@/config/animations";
 import { ChannelCard } from "@/components/cards/ChannelCard";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export const HomePage: FC<PageProps> = ({ navigate, channels }) => (
   <motion.div

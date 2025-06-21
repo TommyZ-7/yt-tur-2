@@ -30,9 +30,7 @@ export const UrlPlayerPage: FC<{ directUrl?: string }> = ({ directUrl }) => {
       // チャンネル情報を取得（チャンネルURLから@IDを抽出）
       const channelId = extractChannelIdFromUrl(parsedResult.channel_url);
       if (channelId) {
-        const channelInfo = await apiService.getChannelInfo(
-          "channel/" + channelId
-        );
+        const channelInfo = await apiService.getChannelInfo(channelId);
         setVideoInfo((prev) => ({
           ...prev,
           name: channelInfo.name,

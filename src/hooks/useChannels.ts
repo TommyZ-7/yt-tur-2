@@ -4,13 +4,13 @@ import { apiService } from "@/services/api";
 import { useSettings } from "@/contexts/SettingsContext";
 
 export const useChannels = () => {
-  const { appSettings } = useSettings();
+  const { appSettings, channelCache } = useSettings();
   const [channelList, setChannelList] = useState<Channel[]>([]);
-  const hasRun = useRef(false);
+  const isRunning = useRef(false);
 
   useEffect(() => {
-    if (hasRun.current) return;
-    hasRun.current = true;
+    if (isRunning.current) return;
+    isRunning.current = true;
 
     const fetchChannelInfo = async (channelId: string): Promise<Channel> => {
       const channel = await apiService.getChannelInfo(channelId);
@@ -24,15 +24,28 @@ export const useChannels = () => {
 
     const fetchAllChannels = async (): Promise<Channel[]> => {
       const channels: Channel[] = [];
+
       for (const channel of appSettings.followChannel) {
-        try {
-          const channelInfo = await fetchChannelInfo(channel.id);
-          channels.push(channelInfo);
-        } catch (error) {
-          console.error(
-            `Failed to fetch channel info for ${channel.id}:`,
-            error
-          );
+        if (channel.cache) {
+          try {
+            channels.push(channel.cache);
+          } catch (error) {
+            console.error(
+              `Failed to retrieve cached channel info for ${channel.id}:`,
+              error
+            );
+          }
+        } else {
+          try {
+            const channelInfo = await fetchChannelInfo(channel.id);
+            channels.push(channelInfo);
+            await channelCache(channelInfo);
+          } catch (error) {
+            console.error(
+              `Failed to fetch channel info for ${channel.id}:`,
+              error
+            );
+          }
         }
       }
       return channels;
@@ -41,8 +54,10 @@ export const useChannels = () => {
     const executeSequentially = async () => {
       try {
         console.log("--- Start: Fetching all channels ---");
+        console.log(appSettings.followChannel);
         const channels = await fetchAllChannels();
         setChannelList(channels);
+        isRunning.current = false;
         console.log("--- End: Fetching all channels ---");
       } catch (error) {
         console.error(
@@ -53,7 +68,7 @@ export const useChannels = () => {
     };
 
     executeSequentially();
-  }, []);
+  }, [appSettings.followChannel]);
 
   const handleUpdateChannelList = (
     newVideos: Video[],

@@ -1,7 +1,7 @@
 // src/hooks/useSettings.ts
 import { useState, useEffect } from "react";
 import { LazyStore } from "@tauri-apps/plugin-store";
-import { AppSettings, defaultAppSettings } from "@/types";
+import { AppSettings, defaultAppSettings, Channel } from "@/types";
 
 const STORE_FILE = "app-settings.json";
 
@@ -39,12 +39,13 @@ export const useAppSettings = () => {
       const followChannel =
         ((await storeInstance.get(
           "followChannel"
-        )) as AppSettings["followChannel"]) || {};
+        )) as AppSettings["followChannel"]) || defaultAppSettings.followChannel; // 空配列を使用
       const playlist =
         ((await storeInstance.get("playlist")) as AppSettings["playlist"]) ||
-        {};
+        defaultAppSettings.playlist;
       const history =
-        ((await storeInstance.get("history")) as AppSettings["history"]) || {};
+        ((await storeInstance.get("history")) as AppSettings["history"]) ||
+        defaultAppSettings.history;
       console.log("Loaded settings:", {
         settings,
         followChannel,
@@ -93,7 +94,10 @@ export const useAppSettings = () => {
         console.warn(`Channel with ID ${channelId} already exists.`);
         return;
       }
-      const newChannel = { id: channelId, channelName };
+      const newChannel = {
+        id: channelId,
+        channelName: channelName,
+      };
       const updatedFollowChannels = [...appSettings.followChannel, newChannel];
 
       await store.set("followChannel", updatedFollowChannels);
@@ -105,6 +109,29 @@ export const useAppSettings = () => {
       }));
     } catch (error) {
       console.error("Failed to add follow channel:", error);
+    }
+  };
+
+  const channelCache = async (channel: Channel) => {
+    if (!store) return;
+    try {
+      // チャンネルキャッシュを更新
+      const updatedFollowChannels = appSettings.followChannel.map((c) => {
+        if (c.id === channel.id) {
+          return { ...c, cache: channel };
+        }
+        return c;
+      });
+
+      await store.set("followChannel", updatedFollowChannels);
+      await store.save();
+
+      setAppSettings((prev) => ({
+        ...prev,
+        followChannel: updatedFollowChannels,
+      }));
+    } catch (error) {
+      console.error("Failed to update channel cache:", error);
     }
   };
 
@@ -410,6 +437,8 @@ export const useAppSettings = () => {
     addFollowChannel,
     removeFollowChannel,
     editFollowChannel,
+    // チャンネルキャッシュ更新
+    channelCache,
     // プレイリスト
     updatePlaylist,
     addVideoToPlaylist,
