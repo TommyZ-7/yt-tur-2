@@ -152,5 +152,3 @@ yt-tur/
 問題や質問がある場合は、[Issues](https://github.com/your-username/yt-tur/issues) でお知らせください。
 
 ---
-
-**注意**: この README は AI で生成したものです。一部正しくない情報が掲載されている可能性があります。
