@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, Loader } from "lucide-react";
 import "@/App.css";
@@ -12,12 +12,14 @@ import { UrlPlayerPage } from "@/pages/UrlPlayerPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { useChannels } from "@/hooks/useChannels";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export default function App() {
   const [page, setPage] = useState<PageState>({ name: "home", id: null });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const { channelList, handleUpdateChannelList } = useChannels();
   const isLoading = false;
+  const { updateSettings } = useSettings();
 
   const navigate: NavigateFunction = (newPage) => {
     if (newPage.name === page.name && newPage.id === page.id) return;
@@ -25,6 +27,13 @@ export default function App() {
     setPage(newPage);
     window.scrollTo(0, 0);
   };
+
+  useEffect(() => {
+    // 初回ロード時に設定を更新
+    updateSettings({
+      settingAlready: true,
+    });
+  }, []);
 
   const renderPage = () => {
     if (isLoading) {

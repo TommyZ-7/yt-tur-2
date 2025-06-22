@@ -1,10 +1,21 @@
 
 
 use tauri_plugin_shell::ShellExt;
+use tauri::Manager;
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use encoding_rs::SHIFT_JIS;
 use std::{str};
+use std::path::PathBuf;
+
+
+/// yt-dlpの実行ファイルパスを取得
+fn get_executable_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app_handle.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {}", e))?;
+    Ok(app_data_dir.join("yt-dlp"))
+}
+
 
 
 #[tauri::command]
@@ -13,9 +24,10 @@ pub async fn dlp_get_channel_info(app_handle: tauri::AppHandle, channel_url: Str
 
     println!("Fetching channel info for URL: {}", channel_url);
 
+
     // yt-dlpでチャンネル情報をJSON形式で取得
     let output = shell
-        .sidecar("ytdlp-sidecar")
+        .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
         .unwrap()
         .arg("--no-warnings")
         .arg("--cookies-from-browser")
@@ -105,7 +117,7 @@ pub async fn dlp_get_channel_newvideo(app_handle: tauri::AppHandle, channel_url:
 
     // yt-dlpでチャンネル情報をJSON形式で取得
     let output = shell
-        .sidecar("ytdlp-sidecar")
+        .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
         .unwrap()
         .arg("--no-warnings")
         .arg("--cookies-from-browser")
@@ -184,7 +196,7 @@ pub async fn dlp_get_channel_morevideo(app_handle: tauri::AppHandle, channel_url
 
     // yt-dlpでチャンネル情報をJSON形式で取得
     let output = shell
-        .sidecar("ytdlp-sidecar")
+        .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
         .unwrap()
         .arg("--no-warnings")
         .arg("--cookies-from-browser")
@@ -272,7 +284,7 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
 
     // yt-dlpで動画情報をJSON形式で取得
     let output = shell
-        .sidecar("ytdlp-sidecar")
+        .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
         .unwrap()
         .arg("--no-warnings")
         .arg("--cookies-from-browser")
@@ -343,7 +355,7 @@ pub async fn dlp_get_stream_url(app_handle: tauri::AppHandle, video_url: String,
 
     // yt-dlpで動画のストリームURLを取得
     let output = shell
-        .sidecar("ytdlp-sidecar")
+        .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
         .unwrap()
         .arg("--cookies-from-browser")
         .arg("firefox")

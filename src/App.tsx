@@ -508,9 +508,9 @@ export default function App() {
   const components = [
     LanguageSelection,
     BrowserSelection,
-    ChannelListImport,
     AdvancedSettings,
     LibraryDownload,
+    ChannelListImport,
     CompletionScreen,
   ];
 
@@ -582,7 +582,7 @@ export default function App() {
                 <ChevronRight className="w-5 h-5 ml-1" />
               </button>
             )}
-            {step === 3 && (
+            {step === 4 && (
               <button
                 onClick={handleNext}
                 className="flex items-center px-6 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition"
