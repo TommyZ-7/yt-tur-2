@@ -9,12 +9,15 @@ use std::{str};
 use std::path::PathBuf;
 
 
+
 /// yt-dlpの実行ファイルパスを取得
-fn get_executable_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub fn get_executable_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = app_handle.path().app_data_dir()
         .map_err(|e| format!("Failed to get app data directory: {}", e))?;
     Ok(app_data_dir.join("yt-dlp"))
 }
+
+
 
 
 
@@ -24,6 +27,7 @@ pub async fn dlp_get_channel_info(app_handle: tauri::AppHandle, channel_url: Str
 
     println!("Fetching channel info for URL: {}", channel_url);
 
+    println!("Using yt-dlp executable at: {:?}", get_executable_path(&app_handle));
 
     // yt-dlpでチャンネル情報をJSON形式で取得
     let output = shell
@@ -115,6 +119,9 @@ pub async fn dlp_get_channel_newvideo(app_handle: tauri::AppHandle, channel_url:
 
     println!("Fetching channel info for URL: {}", channel_url);
 
+    println!("Using yt-dlp executable at: {:?}", get_executable_path(&app_handle));
+
+
     // yt-dlpでチャンネル情報をJSON形式で取得
     let output = shell
         .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
@@ -193,6 +200,8 @@ pub async fn dlp_get_channel_morevideo(app_handle: tauri::AppHandle, channel_url
 
     println!("Fetching channel info for URL: {}", channel_url);
     println!("Offset: {}", offset);
+    println!("Using yt-dlp executable at: {:?}", get_executable_path(&app_handle));
+
 
     // yt-dlpでチャンネル情報をJSON形式で取得
     let output = shell
@@ -281,6 +290,8 @@ pub async fn dlp_get_video_info(app_handle: tauri::AppHandle, video_url: String)
     let shell = app_handle.shell();
 
     println!("Fetching video info for URL: {}", video_url);
+    println!("Using yt-dlp executable at: {:?}", get_executable_path(&app_handle));
+
 
     // yt-dlpで動画情報をJSON形式で取得
     let output = shell
@@ -352,6 +363,8 @@ pub async fn dlp_get_stream_url(app_handle: tauri::AppHandle, video_url: String,
     let shell = app_handle.shell();
 
     println!("Fetching stream URL for video: {}", video_url);
+    println!("Using yt-dlp executable at: {:?}", get_executable_path(&app_handle));
+
 
     // yt-dlpで動画のストリームURLを取得
     let output = shell

@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import React, { useState, useEffect, FC, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Reorder } from "framer-motion";
@@ -497,6 +497,7 @@ const ProgressIndicator: React.FC<{ currentStep: number; steps: string[] }> = ({
 export default function App() {
   const [[step, direction], setStep] = useState<[number, number]>([0, 0]);
   const { appSettings } = useSettings();
+  const navigate = useNavigate();
   const stepTitles = [
     "言語",
     "ブラウザ",
@@ -596,24 +597,8 @@ export default function App() {
       </div>
     );
   } else {
-    return (
-      <div className="bg-gray-100 min-h-screen flex items-center justify-center font-sans p-4">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-            セットアップは完了しています
-          </h1>
-          <p className="text-gray-600 mb-4 text-center">
-            すでにセットアップが完了しています。アプリケーションをお楽しみください。
-          </p>
-          <Link
-            to="/home"
-            className="block w-full text-center px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            ホームへ戻る
-          </Link>
-        </div>
-      </div>
-    );
+    // 設定が完了している場合はホームページへ直接移動
+    navigate("/home");
   }
 }
 

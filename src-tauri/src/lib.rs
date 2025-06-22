@@ -11,8 +11,10 @@ use dlp::get_channel::dlp_get_channel_newvideo;
 use dlp::get_channel::dlp_get_video_info;
 use dlp::get_channel::dlp_get_channel_morevideo;
 use dlp::get_channel::dlp_get_stream_url;
+use dlp::get_channel::get_executable_path;
 
 use dlp::dlp_manager::check_and_update;
+
 
 
 
@@ -48,7 +50,7 @@ async fn get_video_info(
 
     // yt-dlpで動画情報をJSON形式で取得
     let output = shell
-        .sidecar("ytdlp-sidecar")
+        .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
         .unwrap()
         .arg("--cookies-from-browser")
         .arg("firefox")
@@ -130,7 +132,7 @@ async fn download_video(
     args.push(&video_url);
 
     let output = shell
-        .sidecar("ytdlp-sidecar")
+        .sidecar(get_executable_path(&app_handle).map_err(|e| format!("Failed to get executable path: {}", e))?)
         .unwrap()
         .arg("--cookies-from-browser")
         .arg("firefox")
