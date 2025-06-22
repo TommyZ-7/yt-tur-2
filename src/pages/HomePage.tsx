@@ -28,7 +28,11 @@ export const HomePage: FC<PageProps> = ({ navigate, channels }) => {
         animate="visible"
       >
         {channels.map((channel) => (
-          <ChannelCard key={channel.id} channel={channel} navigate={navigate} />
+          <ChannelCard
+            key={channel.id + "CCard"}
+            channel={channel}
+            navigate={navigate}
+          />
         ))}
         {appSettings.state.channelLoading && <ChannelCardSkeleton />}
       </motion.div>

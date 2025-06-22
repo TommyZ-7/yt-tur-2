@@ -27,11 +27,7 @@ export const useAppSettings = () => {
 
     initStore();
   }, []);
-
-  useEffect(() => {
-    // ストアの変更を監視して、設定が更新された場合ログ出力
-    console.log("App settings updated:", appSettings);
-  }, [appSettings]);
+  
   // 全設定の読み込み
   const loadAllSettings = async (
     storeInstance: LazyStore

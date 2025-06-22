@@ -500,9 +500,9 @@ export default function App() {
   const stepTitles = [
     "言語",
     "ブラウザ",
-    "チャンネル",
     "詳細設定",
-    "ライブラリ",
+    "ライブラリダウンロード",
+    "チャンネルリスト読み込み",
     "完了",
   ];
   const components = [
@@ -596,6 +596,24 @@ export default function App() {
       </div>
     );
   } else {
+    return (
+      <div className="bg-gray-100 min-h-screen flex items-center justify-center font-sans p-4">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
+          <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+            セットアップは完了しています
+          </h1>
+          <p className="text-gray-600 mb-4 text-center">
+            すでにセットアップが完了しています。アプリケーションをお楽しみください。
+          </p>
+          <Link
+            to="/home"
+            className="block w-full text-center px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            ホームへ戻る
+          </Link>
+        </div>
+      </div>
+    );
   }
 }
 
