@@ -12,6 +12,8 @@ use dlp::get_channel::dlp_get_video_info;
 use dlp::get_channel::dlp_get_channel_morevideo;
 use dlp::get_channel::dlp_get_stream_url;
 
+use dlp::dlp_manager::check_and_update;
+
 
 
 
@@ -155,6 +157,7 @@ async fn download_video(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             get_video_info,
@@ -163,7 +166,8 @@ pub fn run() {
             dlp_get_channel_newvideo,
             dlp_get_video_info,
             dlp_get_channel_morevideo,
-            dlp_get_stream_url
+            dlp_get_stream_url,
+            check_and_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

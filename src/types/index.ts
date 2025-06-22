@@ -19,6 +19,11 @@ export interface Video {
   date?: string;
 }
 
+export interface emitter {
+  status: string; // "success" or "error"
+  progress: number; // 進捗率（0-100）
+}
+
 export interface PageState {
   name:
     | "home"
@@ -76,6 +81,7 @@ export interface AppSettings {
     hfr: boolean;
     audioQuality: "high" | "medium" | "low";
     player: "new" | "dev";
+    settingAlready: boolean; // 初期値を追加
   };
   followChannel: {
     id: string;
@@ -119,6 +125,7 @@ export const defaultAppSettings: AppSettings = {
     hfr: true,
     player: "new",
     audioQuality: "high",
+    settingAlready: false, // 初期値を追加
   },
   followChannel: [],
   playlist: {},

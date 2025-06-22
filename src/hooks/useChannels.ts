@@ -29,6 +29,7 @@ export const useChannels = () => {
         if (channel.cache) {
           try {
             channels.push(channel.cache);
+            setChannelList(channels);
           } catch (error) {
             console.error(
               `Failed to retrieve cached channel info for ${channel.id}:`,
@@ -40,6 +41,7 @@ export const useChannels = () => {
             const channelInfo = await fetchChannelInfo(channel.id);
             channels.push(channelInfo);
             await channelCache(channelInfo);
+            setChannelList(channels);
           } catch (error) {
             console.error(
               `Failed to fetch channel info for ${channel.id}:`,

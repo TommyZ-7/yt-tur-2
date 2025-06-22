@@ -42,4 +42,7 @@ regex = "1.11.1"
 encoding_rs = "0.8.33"
 encoding_rs_io = "0.1.7"
 tauri-plugin-store = "2.2.1"
-
+sha2 = "0.10.9"
+hex = "0.4.3"
+anyhow = "1.0"
+tauri-plugin-process = "2.2.2"
